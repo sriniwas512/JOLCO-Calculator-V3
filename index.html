@@ -170,7 +170,8 @@ function JOLCOv3() {
   const [leaseTerm, setLeaseTerm] = useState(10);
   const [sofrRate, setSofrRate] = useState(4.3);
   const [spreadBps, setSpreadBps] = useState(280);
-  const [commission, setCommission] = useState(2.0);
+  const [saleCommission, setSaleCommission] = useState(2.0);
+  const [bbcCommission, setBbcCommission] = useState(1.25);
   // Purchase Option schedule
   // Default logic: PO price declines by ~(Vessel Price / Amort Period) per year
   // because the PO tracks the remaining financing balance
@@ -249,20 +250,23 @@ function JOLCOv3() {
       Stream 3 (Residual) is the PO exercise proceeds minus remaining debt.
     */
 
-    const equityCF = [-equity];
-    const equityCF_noTax = [-equity];
+    const saleCommCost = VP * saleCommission / 100;
+    const equityCF = [-(equity + saleCommCost)];
+    const equityCF_noTax = [-(equity + saleCommCost)];
     const years = [];
     let outstandingTotal = VP;
     let outstandingDebt = debt;
     let outstandingEquity = equity;
-    let cumulativeEquityCF = -equity;
-    let totalStream1 = 0, totalStream2 = 0, totalStream3 = 0;
+    let cumulativeEquityCF = -(equity + saleCommCost);
+    let totalStream1 = 0, totalStream2 = 0, totalStream3 = 0, totalBbcComm = 0;
 
     for (let yr = 1; yr <= effectiveExerciseYear; yr++) {
       // ── CASH IN ──
       const fixedHire = annualPrincipal;
       const variableHire = outstandingTotal * allInRate;
       const totalHire = fixedHire + variableHire;
+      const bbcCommCost = totalHire * bbcCommission / 100;
+      const netHire = totalHire - bbcCommCost;
 
       // ── CASH OUT TO BANK ──
       const bankPrincipal = annualPrincipal * (debtPct / 100);
@@ -283,7 +287,7 @@ function JOLCOv3() {
       // SPC P&L for tax purposes: hire income − depreciation − interest expense
       // Note: only bank interest is an expense; the "interest" on equity isn't a real cost
       const dep = yr <= depr.length ? depr[yr - 1] : { total: 0, bv: 0 };
-      const spcTaxablePL = totalHire - dep.total - bankInterest;
+      const spcTaxablePL = netHire - dep.total - bankInterest;
       // If negative → loss flows to TK investor → saves tax on other income
       // If positive → profit flows to investor → owes additional tax
       const taxShieldThisYear = -spcTaxablePL * (taxRate / 100);
@@ -306,9 +310,9 @@ function JOLCOv3() {
       // ── TOTAL EQUITY CF THIS YEAR ──
       // Return OF capital (equity principal) + return ON capital (interest) + tax shield + residual
       // For IRR purposes, the principal return IS a cashflow (it's cash coming back)
-      const netCF = equityPrincipalReturn + hireSpread + taxShieldThisYear + (isExitYear ? residualToEquity : 0);
+      const netCF = equityPrincipalReturn + hireSpread - bbcCommCost + taxShieldThisYear + (isExitYear ? residualToEquity : 0);
       // CF without tax shield (for pure equity IRR)
-      const netCF_noTax = equityPrincipalReturn + hireSpread + (isExitYear ? residualToEquity : 0);
+      const netCF_noTax = equityPrincipalReturn + hireSpread - bbcCommCost + (isExitYear ? residualToEquity : 0);
 
       // Update balances
       outstandingTotal -= annualPrincipal;
@@ -318,12 +322,13 @@ function JOLCOv3() {
 
       totalStream1 += hireSpread;
       totalStream2 += taxShieldThisYear;
+      totalBbcComm += bbcCommCost;
       if (isExitYear) totalStream3 = residualToEquity;
 
       equityCF.push(netCF);
       equityCF_noTax.push(netCF_noTax);
       years.push({
-        yr, fixedHire, variableHire, totalHire,
+        yr, fixedHire, variableHire, totalHire, bbcCommCost, netHire,
         bankPrincipal, bankInterest, totalToBank,
         equityPrincipalReturn, equityInterestIncome, hireSpread,
         dep: dep.total, spcTaxablePL, taxShieldThisYear,
@@ -336,13 +341,14 @@ function JOLCOv3() {
 
     const blendedIRR = solveIRR(equityCF);
     const equityIRR = solveIRR(equityCF_noTax);
-    const treasTerminal = equity * Math.pow(1 + treasuryYield / 100, effectiveExerciseYear);
-    const treasProfit = treasTerminal - equity;
+    const totalEquityDeployed = equity + saleCommCost;
+    const treasTerminal = totalEquityDeployed * Math.pow(1 + treasuryYield / 100, effectiveExerciseYear);
+    const treasProfit = treasTerminal - totalEquityDeployed;
     const jolcoProfit = equityCF.reduce((a, b) => a + b, 0);
     const spread = blendedIRR != null ? blendedIRR - treasuryYield / 100 : null;
 
-    return { VP, debt, equity, equityCF, equityCF_noTax, years, depr, blendedIRR, equityIRR, treasTerminal, treasProfit, jolcoProfit, spread, totalStream1, totalStream2, totalStream3, monthlyFixed, allInRate, poPriceMil };
-  }, [vesselPrice, debtPct, amortYrs, sofrRate, spreadBps, commission, taxRate, usefulLife, specialDeprPct, treasuryYield, flagId, effectiveExerciseYear, poSchedule]);
+    return { VP, debt, equity, saleCommCost, totalBbcComm, totalEquityDeployed, equityCF, equityCF_noTax, years, depr, blendedIRR, equityIRR, treasTerminal, treasProfit, jolcoProfit, spread, totalStream1, totalStream2, totalStream3, monthlyFixed, allInRate, poPriceMil };
+  }, [vesselPrice, debtPct, amortYrs, sofrRate, spreadBps, saleCommission, bbcCommission, taxRate, usefulLife, specialDeprPct, treasuryYield, flagId, effectiveExerciseYear, poSchedule]);
 
   const C = { background: "#1a1b26", borderRadius: 10, padding: 18, border: "1px solid #292e42", marginBottom: 14 };
   const H = (color, text) => <div style={{ fontSize: 12, fontWeight: 700, color: "#c0caf5", marginBottom: 10, fontFamily: F, display: "flex", alignItems: "center", gap: 8 }}><span style={{ color }}>●</span>{text}</div>;
@@ -355,7 +361,7 @@ function JOLCOv3() {
           <div style={{ width: 40, height: 40, borderRadius: 9, background: "linear-gradient(135deg, #7aa2f7, #bb9af7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "#1a1b26" }}>J</div>
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "#c0caf5", fontFamily: F }}>JOLCO Equity IRR Calculator <span style={{ fontSize: 11, color: "#9ece6a" }}>v3</span></div>
-            <div style={{ fontSize: 10, color: "#565f89" }}>BB Owner Equity Returns · MOF Depreciation · Tax Shield Analysis</div>
+            <div style={{ fontSize: 10, color: "#565f89" }}>Financed ~{debtPct}% by bank debt, ~{100-debtPct}% by Japanese TK (silent partnership) equity investors · MOF Depreciation · Tax Shield Analysis</div>
           </div>
         </div>
       </div>
@@ -393,11 +399,13 @@ function JOLCOv3() {
                 <div style={{ fontSize: 9, color: "#565f89", marginTop: 2 }}>MOF: {vType.cat}{isJPFlag ? "" : " (foreign: その他のもの 12yr flat)"}</div>
               </div>
               <Inp label="Vessel Price" value={vesselPrice} onChange={setVesselPrice} unit="$M" />
-              <Inp label="Debt / Equity Split (Debt %)" value={debtPct} onChange={setDebtPct} unit="%" help="Typically 70-75% debt" min={0} max={95} />
-              <Inp label="Commission" value={commission} onChange={setCommission} unit="%" help="Total brokerage commission" step={0.5} />
-              <div style={{ padding: 10, borderRadius: 6, background: "#1e2030", border: "1px solid #292e42", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <div><div style={{ fontSize: 9, color: "#565f89" }}>EQUITY IN</div><div style={{ fontSize: 16, fontWeight: 700, color: "#7aa2f7", fontFamily: F }}>${$d(R.equity / 1e6, 1)}M</div></div>
-                <div><div style={{ fontSize: 9, color: "#565f89" }}>DEBT</div><div style={{ fontSize: 16, fontWeight: 700, color: "#e0af68", fontFamily: F }}>${$d(R.debt / 1e6, 1)}M</div></div>
+              <Inp label="Debt / Equity Split (Debt %)" value={debtPct} onChange={setDebtPct} unit="%" help={`${debtPct}% bank debt · ${100 - debtPct}% TK equity`} min={0} max={95} />
+              <Inp label="Sale Commission" value={saleCommission} onChange={setSaleCommission} unit="%" help="Vessel purchase brokerage · paid upfront at Year 0" step={0.25} />
+              <Inp label="BBC Commission" value={bbcCommission} onChange={setBbcCommission} unit="%" help="Annual bareboat charter brokerage on gross hire" step={0.25} />
+              <div style={{ padding: 10, borderRadius: 6, background: "#1e2030", border: "1px solid #292e42", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                <div><div style={{ fontSize: 9, color: "#565f89" }}>EQUITY ({100-debtPct}%)</div><div style={{ fontSize: 14, fontWeight: 700, color: "#7aa2f7", fontFamily: F }}>${$d(R.equity / 1e6, 1)}M</div></div>
+                <div><div style={{ fontSize: 9, color: "#f7768e" }}>+SALE COMM</div><div style={{ fontSize: 14, fontWeight: 700, color: "#f7768e", fontFamily: F }}>${$d(R.saleCommCost / 1e6, 2)}M</div></div>
+                <div><div style={{ fontSize: 9, color: "#565f89" }}>DEBT ({debtPct}%)</div><div style={{ fontSize: 14, fontWeight: 700, color: "#e0af68", fontFamily: F }}>${$d(R.debt / 1e6, 1)}M</div></div>
               </div>
             </div>
 
@@ -458,9 +466,9 @@ function JOLCOv3() {
                 </div>
               ))}
               <div style={{ marginTop: 10, borderTop: "1px solid #292e42", paddingTop: 10 }}>
-                <Inp label="Effective Tax Rate" value={taxRate} onChange={setTaxRate} unit="%" help="~30.62% incl. defense surtax" step={0.01} />
+                <Inp label="Effective Tax Rate" value={taxRate} onChange={setTaxRate} unit="%" help={`${taxRate}% · std JP corp (23.2%) + local + defense surtax`} step={0.01} />
                 <Inp label="US Treasury Yield" value={treasuryYield} onChange={setTreasuryYield} unit="%" step={0.01} />
-                <Slider label="Special Depreciation (Yr1)" value={specialDeprPct} onChange={setSpecialDeprPct} min={0} max={32} step={1} unit="%" help="MLIT advanced vessels: JP 20-32%, Foreign 18-30%" />
+                <Slider label="Special Depreciation (Yr1)" value={specialDeprPct} onChange={(v) => setSpecialDeprPct(Math.min(v, flagInfo.specialMax))} min={0} max={flagInfo.specialMax} step={1} unit="%" help={`MLIT advanced vessels: ${flagInfo.specialMin}–${flagInfo.specialMax}% for ${flagInfo.label}`} />
               </div>
             </div>
 
@@ -485,7 +493,7 @@ function JOLCOv3() {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
                 {[
-                  { l: "Equity In", v: `$${$d(R.equity / 1e6, 1)}M`, c: "#7aa2f7" },
+                  { l: "Equity Deployed", v: `$${$d(R.totalEquityDeployed / 1e6, 1)}M`, c: "#7aa2f7" },
                   { l: "Total Profit", v: `$${$d(R.jolcoProfit / 1e6, 2)}M`, c: R.jolcoProfit >= 0 ? "#9ece6a" : "#f7768e" },
                   { l: "Equity IRR", v: pct(R.equityIRR), c: "#e0af68", sub: "hire + residual" },
                   { l: "Blended IRR", v: pct(R.blendedIRR), c: R.spread > 0 ? "#9ece6a" : "#f7768e", sub: "incl. tax shield" },
@@ -506,7 +514,7 @@ function JOLCOv3() {
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
             <div style={C}>
               {H("#bb9af7", `Depreciation Scale — ${vType.label}`)}
-              <Slider label="Special Depreciation Rate" value={specialDeprPct} onChange={setSpecialDeprPct} min={0} max={32} step={1} unit="%" help="Slide to see how Yr1 bonus changes the profile" />
+              <Slider label="Special Depreciation Rate" value={specialDeprPct} onChange={(v) => setSpecialDeprPct(Math.min(v, flagInfo.specialMax))} min={0} max={flagInfo.specialMax} step={1} unit="%" help={`${flagInfo.specialMin}–${flagInfo.specialMax}% for ${flagInfo.label} · slide to see how Yr1 bonus changes the IRR`} />
               <div style={{ display: "flex", gap: 12, marginBottom: 12, fontSize: 10 }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 12, height: 8, borderRadius: 2, background: "#7aa2f7", display: "inline-block" }} /> Ordinary</span>
                 {specialDeprPct > 0 && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 12, height: 8, borderRadius: 2, background: "#bb9af7", display: "inline-block" }} /> Special</span>}
@@ -581,10 +589,12 @@ function JOLCOv3() {
             <div style={C}>
               {H("#7aa2f7", "Money Flow — How the Owner Makes Money")}
               {(() => {
-                const eq = R.equity;
+                const eq = R.totalEquityDeployed;
                 const s1 = R.totalStream1;
                 const s2 = R.totalStream2;
                 const s3 = R.totalStream3;
+                const sc = R.saleCommCost;
+                const bc = R.totalBbcComm;
                 const totalReturned = eq + R.jolcoProfit;
                 const principalBack = R.years.reduce((s, y) => s + y.equityPrincipalReturn, 0);
                 const profit = R.jolcoProfit;
@@ -592,15 +602,17 @@ function JOLCOv3() {
                 const barW = (v) => Math.max(0, Math.abs(v) / maxVal * 100);
                 
                 const rows = [
-                  { label: "Equity Invested", val: -eq, color: "#f7768e", sub: "Cash out at Year 0", isNeg: true },
+                  { label: `Equity Invested (${100 - debtPct}% of VP)`, val: -R.equity, color: "#f7768e", sub: `${debtPct}% bank debt · ${100-debtPct}% TK equity investors`, isNeg: true },
+                  { label: `Sale Commission (${saleCommission}% of VP)`, val: -sc, color: "#f7768e", sub: `Vessel purchase brokerage · $${$d(sc/1e6,2)}M paid at Year 0`, isNeg: true },
                   { label: "divider" },
-                  { label: "Principal Returned via Hire", val: principalBack, color: "#7aa2f7", sub: `$${$d(eq/1e6,2)}M invested → $${$d(principalBack/1e6,2)}M returned over ${effectiveExerciseYear} yrs` },
-                  { label: "① Interest on Equity Balance", val: s1, color: "#9ece6a", sub: `Charterer pays SOFR+${spreadBps}bps on full balance; bank only takes interest on debt portion` },
+                  { label: "Principal Returned via Hire", val: principalBack, color: "#7aa2f7", sub: `$${$d(eq/1e6,2)}M deployed → $${$d(principalBack/1e6,2)}M returned over ${effectiveExerciseYear} yrs` },
+                  { label: "① Interest on Equity Balance (gross)", val: s1, color: "#9ece6a", sub: `Charterer pays SOFR+${spreadBps}bps on full balance; bank only takes interest on debt portion` },
+                  { label: `   − BBC Commission (${bbcCommission}% of hire)`, val: -bc, color: "#f7768e", sub: `Annual bareboat charter brokerage · $${$d(bc/1e6,2)}M total over lease`, isNeg: true },
                   { label: "② Tax Shield (Net)", val: s2, color: "#bb9af7", sub: "Depreciation losses flow via TK → offset investor's other taxable income" },
                   { label: "③ Residual from PO Exercise", val: s3, color: "#e0af68", sub: `PO at $${$d(R.poPriceMil/1e6,1)}M − remaining debt − cap gains tax` },
                   { label: "divider" },
                   { label: "Total Returned to Equity", val: totalReturned, color: "#9ece6a", sub: `${$d(totalReturned/eq, 2)}x MoIC`, isBold: true },
-                  { label: "NET PROFIT", val: profit, color: profit >= 0 ? "#9ece6a" : "#f7768e", sub: "= ① + ② + ③ (return ON capital, above getting your money back)", isBold: true },
+                  { label: "NET PROFIT", val: profit, color: profit >= 0 ? "#9ece6a" : "#f7768e", sub: "= ① − BBC comm + ② + ③ (return ON capital, above getting your money back)", isBold: true },
                 ];
 
                 return (
@@ -626,14 +638,20 @@ function JOLCOv3() {
                     <div style={{ marginTop: 16, padding: 14, borderRadius: 8, background: "#16161e", border: "1px solid #292e42" }}>
                       <div style={{ fontSize: 11, color: "#c0caf5", fontWeight: 600, marginBottom: 8 }}>The Equation:</div>
                       <div style={{ fontFamily: F, fontSize: 13, color: "#a9b1d6", lineHeight: 2.2, textAlign: "center" }}>
-                        <span style={{ color: "#f7768e" }}>-${$d(eq/1e6,2)}M</span>
-                        <span style={{ color: "#565f89" }}> equity in</span>
+                        <span style={{ color: "#f7768e" }}>-${$d(R.equity/1e6,2)}M</span>
+                        <span style={{ color: "#565f89" }}> equity ({100-debtPct}%) in</span>
+                        <br />
+                        <span style={{ color: "#f7768e" }}>-${$d(sc/1e6,2)}M</span>
+                        <span style={{ color: "#565f89" }}> sale commission ({saleCommission}%)</span>
                         <br />
                         <span style={{ color: "#7aa2f7" }}>+${$d(principalBack/1e6,2)}M</span>
                         <span style={{ color: "#565f89" }}> principal back (return OF capital)</span>
                         <br />
                         <span style={{ color: "#9ece6a" }}>+${$d(s1/1e6,2)}M</span>
-                        <span style={{ color: "#565f89" }}> ① interest earned</span>
+                        <span style={{ color: "#565f89" }}> ① interest earned (gross)</span>
+                        <br />
+                        <span style={{ color: "#f7768e" }}>-${$d(bc/1e6,2)}M</span>
+                        <span style={{ color: "#565f89" }}> BBC commission ({bbcCommission}%)</span>
                         <br />
                         <span style={{ color: "#bb9af7" }}>{s2 >= 0 ? "+" : ""}${$d(s2/1e6,2)}M</span>
                         <span style={{ color: "#565f89" }}> ② tax shield</span>
@@ -659,7 +677,7 @@ function JOLCOv3() {
             <div style={C}>
             {H("#9ece6a", "Three Return Streams — Year by Year")}
             <div style={{ display: "flex", gap: 12, marginBottom: 12, fontSize: 10, flexWrap: "wrap" }}>
-              <span style={{ color: "#9ece6a" }}>● ① Hire Spread</span>
+              <span style={{ color: "#9ece6a" }}>● ① Hire Spread (net of BBC comm)</span>
               <span style={{ color: "#bb9af7" }}>● ② Tax Shield</span>
               <span style={{ color: "#e0af68" }}>● ③ Residual/PO</span>
             </div>
@@ -675,9 +693,9 @@ function JOLCOv3() {
                 <tbody>
                   <tr style={{ borderBottom: "1px solid #1e2030", background: "#1e1e2e" }}>
                     <td style={{ padding: "5px 8px", textAlign: "right", fontFamily: F, color: "#c0caf5" }}>0</td>
-                    <td colSpan={3} style={{ padding: "5px 8px", textAlign: "center", color: "#565f89", fontSize: 10 }}>Equity Investment</td>
-                    <td style={{ padding: "5px 8px", textAlign: "right", fontFamily: F, color: "#f7768e", fontWeight: 600 }}>-${$(R.equity)}</td>
-                    <td style={{ padding: "5px 8px", textAlign: "right", fontFamily: F, color: "#f7768e" }}>-${$(R.equity)}</td>
+                    <td colSpan={3} style={{ padding: "5px 8px", textAlign: "center", color: "#565f89", fontSize: 10 }}>Equity ({100-debtPct}%) + Sale Comm ({saleCommission}%)</td>
+                    <td style={{ padding: "5px 8px", textAlign: "right", fontFamily: F, color: "#f7768e", fontWeight: 600 }}>-${$(R.totalEquityDeployed)}</td>
+                    <td style={{ padding: "5px 8px", textAlign: "right", fontFamily: F, color: "#f7768e" }}>-${$(R.totalEquityDeployed)}</td>
                   </tr>
                   {R.years.map((y, i) => {
                     const isExpanded = expandedYear === y.yr;
@@ -689,7 +707,7 @@ function JOLCOv3() {
                       </td>
                       <td onClick={() => setExpandedYear(isExpanded ? null : y.yr)}
                         style={{ padding: "5px 8px", textAlign: "right", fontFamily: F, color: "#9ece6a", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>
-                        ${$(y.hireSpread)} <span style={{ fontSize: 8, color: "#565f89" }}>{isExpanded ? "▲" : "▼"}</span>
+                        ${$(y.hireSpread - y.bbcCommCost)} <span style={{ fontSize: 8, color: "#565f89" }}>{isExpanded ? "▲" : "▼"}</span>
                       </td>
                       <td style={{ padding: "5px 8px", textAlign: "right", fontFamily: F, color: y.taxShieldThisYear >= 0 ? "#bb9af7" : "#f7768e" }}>
                         {y.taxShieldThisYear >= 0 ? `$${$(y.taxShieldThisYear)}` : `-$${$(Math.abs(y.taxShieldThisYear))}`}
@@ -715,6 +733,14 @@ function JOLCOv3() {
                               </div>
                               <div style={{ borderTop: "1px dashed #3b4261", marginTop: 4, paddingTop: 4 }} />
                               <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                <span style={{ color: "#f7768e" }}>BBC Commission ({bbcCommission}%)</span>
+                                <span style={{ color: "#f7768e" }}>-${$(y.bbcCommCost)}</span>
+                              </div>
+                              <div style={{ paddingLeft: 12, fontSize: 10, color: "#565f89" }}>
+                                Annual brokerage on gross hire · Net hire: ${$(y.netHire)}
+                              </div>
+                              <div style={{ borderTop: "1px dashed #3b4261", marginTop: 4, paddingTop: 4 }} />
+                              <div style={{ display: "flex", justifyContent: "space-between" }}>
                                 <span style={{ color: "#f7768e" }}>To Bank ({debtPct}%)</span>
                                 <span style={{ color: "#f7768e" }}>-${$(y.totalToBank)}</span>
                               </div>
@@ -724,7 +750,7 @@ function JOLCOv3() {
                               <div style={{ borderTop: "1px dashed #3b4261", marginTop: 4, paddingTop: 4 }} />
                               <div style={{ display: "flex", justifyContent: "space-between" }}>
                                 <span style={{ color: "#9ece6a", fontWeight: 700 }}>To Equity ({100 - debtPct}%)</span>
-                                <span style={{ color: "#9ece6a", fontWeight: 700 }}>${$(y.equityPrincipalReturn + y.equityInterestIncome)}</span>
+                                <span style={{ color: "#9ece6a", fontWeight: 700 }}>${$(y.equityPrincipalReturn + y.equityInterestIncome - y.bbcCommCost)}</span>
                               </div>
                               <div style={{ paddingLeft: 12, marginTop: 2 }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10 }}>
@@ -734,6 +760,10 @@ function JOLCOv3() {
                                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10 }}>
                                   <span style={{ color: "#9ece6a" }}>Interest income (return ON capital)</span>
                                   <span style={{ color: "#9ece6a" }}>${$(y.equityInterestIncome)}</span>
+                                </div>
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10 }}>
+                                  <span style={{ color: "#f7768e" }}>Less BBC commission</span>
+                                  <span style={{ color: "#f7768e" }}>-${$(y.bbcCommCost)}</span>
                                 </div>
                               </div>
                             </div>
@@ -760,7 +790,7 @@ function JOLCOv3() {
               {[
                 { l: "Equity IRR", v: pct(R.equityIRR), s: "Hire + Residual only", c: "#e0af68" },
                 { l: "Blended IRR", v: pct(R.blendedIRR), s: "Incl. tax shield", c: R.spread > 0 ? "#9ece6a" : "#f7768e" },
-                { l: "MoIC", v: R.equity > 0 ? $d((R.equity + R.jolcoProfit) / R.equity, 2) + "x" : "—", s: "Total returned / equity", c: "#7aa2f7" },
+                { l: "MoIC", v: R.totalEquityDeployed > 0 ? $d((R.totalEquityDeployed + R.jolcoProfit) / R.totalEquityDeployed, 2) + "x" : "—", s: "Total returned / equity deployed", c: "#7aa2f7" },
               ].map((x, i) => (
                 <div key={i} style={{ textAlign: "center", padding: 12, borderRadius: 8, background: "#16161e" }}>
                   <div style={{ fontSize: 9, color: "#565f89", textTransform: "uppercase" }}>{x.l}</div>
@@ -785,12 +815,12 @@ function JOLCOv3() {
                 <div style={{ fontSize: 32, fontWeight: 700, color: "#9ece6a", fontFamily: F }}>{pct(R.blendedIRR)}</div>
                 <div style={{ fontSize: 10, color: "#565f89", marginBottom: 12 }}>Equity IRR (all 3 streams combined)</div>
                 {[
-                  { l: "Equity In", v: `$${$d(R.equity / 1e6, 2)}M`, c: "#7aa2f7" },
+                  { l: `Equity Deployed (${100-debtPct}%+comm)`, v: `$${$d(R.totalEquityDeployed / 1e6, 2)}M`, c: "#7aa2f7" },
                   { l: "① Hire Spread", v: `$${$d(R.totalStream1 / 1e6, 2)}M`, c: "#9ece6a" },
                   { l: "② Tax Shield (Net)", v: `$${$d(R.totalStream2 / 1e6, 2)}M`, c: "#bb9af7" },
                   { l: "③ Residual / PO", v: `$${$d(R.totalStream3 / 1e6, 2)}M`, c: "#e0af68" },
                   { l: "Total Profit", v: `$${$d(R.jolcoProfit / 1e6, 2)}M`, c: R.jolcoProfit >= 0 ? "#9ece6a" : "#f7768e" },
-                  { l: "MoIC", v: $d((R.equity + R.jolcoProfit) / R.equity, 2) + "x" },
+                  { l: "MoIC", v: $d((R.totalEquityDeployed + R.jolcoProfit) / R.totalEquityDeployed, 2) + "x" },
                 ].map((r, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #1e2030" }}>
                     <span style={{ fontSize: 10, color: "#565f89" }}>{r.l}</span>
@@ -803,10 +833,10 @@ function JOLCOv3() {
                 <div style={{ fontSize: 32, fontWeight: 700, color: "#7aa2f7", fontFamily: F }}>{$d(treasuryYield, 2)}%</div>
                 <div style={{ fontSize: 10, color: "#565f89", marginBottom: 12 }}>{effectiveExerciseYear}Y compound · Same equity deployed</div>
                 {[
-                  { l: "Capital", v: `$${$d(R.equity / 1e6, 2)}M` },
+                  { l: "Capital", v: `$${$d(R.totalEquityDeployed / 1e6, 2)}M` },
                   { l: "Terminal", v: `$${$d(R.treasTerminal / 1e6, 2)}M` },
                   { l: "Profit", v: `$${$d(R.treasProfit / 1e6, 2)}M`, c: "#7aa2f7" },
-                  { l: "MoIC", v: $d(R.treasTerminal / R.equity, 2) + "x" },
+                  { l: "MoIC", v: $d(R.treasTerminal / R.totalEquityDeployed, 2) + "x" },
                 ].map((r, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #1e2030" }}>
                     <span style={{ fontSize: 10, color: "#565f89" }}>{r.l}</span>
@@ -843,7 +873,6 @@ function JOLCOv3() {
     </div>
   );
 }
-
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<JOLCOv3 />);
