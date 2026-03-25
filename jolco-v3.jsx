@@ -435,7 +435,12 @@ export default function JOLCOv3() {
             <div style={C}>
               {H("#7aa2f7", "Charter & Interest")}
               <Inp label="Amortization Period" value={amortYrs} onChange={setAmortYrs} unit="yrs" help="Fixed hire = Vessel Price ÷ this" min={1} max={25} />
-              <Inp label="Lease (BBC) Term" value={leaseTerm} onChange={setLeaseTerm} unit="yrs" help="Must be ≤ amortization period" min={1} max={25} />
+              <Inp label="Lease (BBC) Term" value={leaseTerm} onChange={(v) => {
+                setLeaseTerm(v);
+                setPoLastYear(v);
+                if (poFirstYear > v) setPoFirstYear(Math.max(1, v - 1));
+                if (exerciseYear > v) setExerciseYear(v);
+              }} unit="yrs" help="Last PO year and obligation auto-sync to BBC term" min={1} max={25} />
               <div style={{ marginTop: 10, marginBottom: 4, fontSize: 9, fontWeight: 700, color: "#e0af68", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1px solid #292e42", paddingBottom: 4 }}>Bank Loan — JPY (SPC borrows from Japanese bank)</div>
               <Inp label="JPY Base Rate (TONA/TIBOR)" value={jpyBaseRate} onChange={setJpyBaseRate} unit="%" step={0.05} help="Near-zero JPY policy rate · typically 0.05–0.50%" />
               <Inp label="Bank Spread over JPY Base" value={bankSpreadBps} onChange={setBankSpreadBps} unit="bps" step={5} help="Credit spread charged by lending bank" />
