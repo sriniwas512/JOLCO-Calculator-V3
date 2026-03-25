@@ -638,9 +638,9 @@ export default function JOLCOv3() {
         {/* ═══ EQUITY CASHFLOWS ═══ */}
         {tab === "cf" && (
           <div>
-            {/* ── WATERFALL VISUALIZATION ── */}
+            {/* ── EQUATION WITH EXPLAINERS ── */}
             <div style={C}>
-              {H("#7aa2f7", "Money Flow — How the Owner Makes Money")}
+              {H("#7aa2f7", "The Equation — How the Economics Work")}
               {(() => {
                 const eq = R.totalEquityDeployed;
                 const s1 = R.totalStream1;
@@ -651,74 +651,50 @@ export default function JOLCOv3() {
                 const totalReturned = eq + R.jolcoProfit;
                 const principalBack = R.years.reduce((s, y) => s + y.equityPrincipalReturn, 0);
                 const profit = R.jolcoProfit;
-                const maxVal = Math.max(eq, totalReturned) * 1.1;
-                const barW = (v) => Math.max(0, Math.abs(v) / maxVal * 100);
-                
-                const rows = [
-                  { label: `Equity Invested (${100 - debtPct}% of VP)`, val: -R.equity, color: "#f7768e", sub: `${debtPct}% bank debt · ${100-debtPct}% TK equity investors`, isNeg: true },
-                  { label: `Sale Commission (${saleCommission}% of VP)`, val: -sc, color: "#f7768e", sub: `Vessel purchase brokerage · $${$d(sc/1e6,2)}M paid at Year 0`, isNeg: true },
-                  { label: "divider" },
-                  { label: "Principal Returned via Hire", val: principalBack, color: "#7aa2f7", sub: `$${$d(eq/1e6,2)}M deployed → $${$d(principalBack/1e6,2)}M returned over ${effectiveExerciseYear} yrs` },
-                  { label: "① Equity return embedded in charter hire (gross)", val: s1, color: "#9ece6a", sub: `Equity earns ${(R.equityAllInRate*100).toFixed(2)}% (SOFR+${spreadBps}bps) on equity portion of outstanding balance; bank debt serviced separately at ${(R.bankAllInRate*100).toFixed(2)}% (JPY+swap)` },
-                  { label: `   − BBC Commission (${bbcCommission}% of hire)`, val: -bc, color: "#f7768e", sub: `Annual bareboat charter brokerage · $${$d(bc/1e6,2)}M total over lease`, isNeg: true },
-                  { label: "② Tax Shield (Net)", val: s2, color: "#bb9af7", sub: "Depreciation losses flow via TK → offset investor's other taxable income" },
-                  { label: "③ Residual from PO Exercise", val: s3, color: "#e0af68", sub: `PO at $${$d(R.poPriceMil/1e6,1)}M − remaining debt − cap gains tax` },
-                  { label: "divider" },
-                  { label: "Total Returned to Equity", val: totalReturned, color: "#9ece6a", sub: `${$d(totalReturned/eq, 2)}x MoIC`, isBold: true },
-                  { label: "NET PROFIT", val: profit, color: profit >= 0 ? "#9ece6a" : "#f7768e", sub: "= ① − BBC comm + ② + ③ (return ON capital, above getting your money back)", isBold: true },
-                ];
+
+                const Row = ({ val, label, explain, color, neg = false }) => (
+                  <div style={{ display: "grid", gridTemplateColumns: "110px 1fr", gap: "0 18px", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #1e2030" }}>
+                    <div style={{ textAlign: "right", fontFamily: F, fontSize: 15, fontWeight: 700, color, paddingTop: 1 }}>
+                      {neg ? "−" : "+"}&thinsp;${$d(Math.abs(val) / 1e6, 2)}M
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#c0caf5", marginBottom: 2 }}>{label}</div>
+                      <div style={{ fontSize: 9, color: "#565f89", lineHeight: 1.55 }}>{explain}</div>
+                    </div>
+                  </div>
+                );
 
                 return (
                   <div>
-                    {rows.map((r, i) => {
-                      if (r.label === "divider") return <div key={i} style={{ borderTop: "1px dashed #3b4261", margin: "10px 0" }} />;
-                      return (
-                        <div key={i} style={{ marginBottom: 12 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                            <span style={{ fontSize: r.isBold ? 12 : 11, color: r.isBold ? "#c0caf5" : "#a9b1d6", fontWeight: r.isBold ? 700 : 400 }}>{r.label}</span>
-                            <span style={{ fontSize: r.isBold ? 16 : 13, fontWeight: 700, color: r.color, fontFamily: F }}>
-                              {r.isNeg ? "-" : ""}${$d(Math.abs(r.val) / 1e6, 2)}M
-                            </span>
-                          </div>
-                          <div style={{ height: r.isBold ? 14 : 10, background: "#16161e", borderRadius: 4, overflow: "hidden" }}>
-                            <div style={{ height: "100%", width: `${barW(r.val)}%`, background: r.color, borderRadius: 4, opacity: r.isNeg ? 0.6 : 1, transition: "width 0.3s" }} />
-                          </div>
-                          {r.sub && <div style={{ fontSize: 9, color: "#565f89", marginTop: 2 }}>{r.sub}</div>}
+                    <Row val={R.equity} neg color="#f7768e" label={`Equity In — ${100-debtPct}% of Vessel Price`}
+                      explain={`TK investors (匿名組合員) put in ${100-debtPct}% of the vessel cost. The remaining ${debtPct}% is a non-recourse JPY bank loan to the SPC at ${(R.bankAllInRate*100).toFixed(2)}% all-in USD equivalent (TONA + ${bankSpreadBps}bps spread + ${swapCostBps}bps cross-currency swap). The bank loan is secured by a vessel mortgage and charter hire assignment — investors are not on the hook for the loan.`} />
+                    <Row val={sc} neg color="#f7768e" label={`Sale Commission — ${saleCommission}% of Vessel Price`}
+                      explain={`One-time brokerage on the vessel purchase, paid at Year 0. Industry standard is 1% per broker side (buyer's broker + seller's broker). Reduces the equity invested but is deductible for SPC tax purposes.`} />
+                    <div style={{ borderTop: "1px dashed #3b4261", margin: "4px 0 12px 0" }} />
+                    <Row val={principalBack} color="#7aa2f7" label="Principal Returned via Fixed Hire"
+                      explain={`Fixed hire = Vessel Price ÷ amortization period = $${$(R.monthlyFixed)}/mo. The equity investors' ${100-debtPct}% share of each annual fixed hire payment = $${$d(principalBack/effectiveExerciseYear/1e6,2)}M/yr. This is return OF capital — not profit. You are simply recovering what you put in.`} />
+                    <Row val={s1} color="#9ece6a" label={`① Charter Hire Spread — SOFR+${spreadBps}bps on equity balance`}
+                      explain={`Variable hire is charged on the full outstanding vessel balance at the all-in rate (${(R.equityAllInRate*100).toFixed(2)}%). The bank takes its share to cover JPY loan interest (${(R.bankAllInRate*100).toFixed(2)}% on ${debtPct}% of balance). The equity investors keep the variable hire on their ${100-debtPct}% of the outstanding balance. As principal is repaid, this stream declines each year. This is the actual return ON capital.`} />
+                    <Row val={bc} neg color="#f7768e" label={`BBC Commission — ${bbcCommission}% of Gross Hire`}
+                      explain={`Annual bareboat charter brokerage paid by the SPC to the shipbroker. BIMCO standard rate for BBC arrangements. Deducted from all hire received before anything reaches equity or bank. Reduces SPC taxable income (deductible expense). Total over ${effectiveExerciseYear}yr lease: $${$d(bc/1e6,2)}M.`} />
+                    <Row val={s2} color="#bb9af7" label="② Tax Shield — Depreciation Loss via TK Pass-Through"
+                      explain={`The SPC claims Japanese tax depreciation (200% declining balance → straight-line switch, per MOF Ordinance 別表第一) on the full vessel cost. In early years, depreciation exceeds hire income net of bank interest → SPC records an accounting loss. This loss flows through the TK structure (匿名組合) to each investor's own corporate tax return, directly offsetting their operating profits. Tax saved = loss × ${taxRate}% corporate rate. In later years the SPC turns profitable and investors owe incremental tax — Stream ② is the NET over the full term.`} />
+                    <Row val={s3} color="#e0af68" label={`③ Residual — PO Exercise at Year ${effectiveExerciseYear}`}
+                      explain={`At exit, the charterer exercises the purchase option at $${$d(R.poPriceMil/1e6,1)}M. The SPC first repays the outstanding bank debt from these proceeds. The balance goes to equity investors, less capital gains tax on (PO price − tax book value of the vessel at that date). If the PO price is below remaining debt, equity receives nothing from Stream ③.`} />
+                    <div style={{ borderTop: "1px dashed #3b4261", margin: "4px 0 12px 0" }} />
+                    <div style={{ display: "grid", gridTemplateColumns: "110px 1fr", gap: "0 18px" }}>
+                      <div style={{ textAlign: "right", fontFamily: F, fontSize: 18, fontWeight: 700, color: profit >= 0 ? "#9ece6a" : "#f7768e", paddingTop: 4 }}>
+                        = ${$d(totalReturned / 1e6, 2)}M
+                      </div>
+                      <div style={{ paddingTop: 4 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#c0caf5" }}>Total Returned · {$d(totalReturned / eq, 2)}x MoIC</div>
+                        <div style={{ fontSize: 10, color: "#565f89", marginTop: 3 }}>
+                          <span style={{ color: profit >= 0 ? "#9ece6a" : "#f7768e", fontWeight: 700 }}>${$d(profit / 1e6, 2)}M net profit</span>
+                          <span style={{ color: "#3b4261" }}> · </span>
+                          <span style={{ color: "#e0af68", fontWeight: 700 }}>{pct(R.blendedIRR)} blended IRR</span>
+                          <span style={{ color: "#3b4261" }}> · </span>
+                          <span style={{ color: "#bb9af7", fontWeight: 700 }}>{pct(R.equityIRR)} pre-tax IRR</span>
                         </div>
-                      );
-                    })}
-                    {/* The Equation */}
-                    <div style={{ marginTop: 16, padding: 14, borderRadius: 8, background: "#16161e", border: "1px solid #292e42" }}>
-                      <div style={{ fontSize: 11, color: "#c0caf5", fontWeight: 600, marginBottom: 8 }}>The Equation:</div>
-                      <div style={{ fontFamily: F, fontSize: 13, color: "#a9b1d6", lineHeight: 2.2, textAlign: "center" }}>
-                        <span style={{ color: "#f7768e" }}>-${$d(R.equity/1e6,2)}M</span>
-                        <span style={{ color: "#565f89" }}> equity ({100-debtPct}%) in</span>
-                        <br />
-                        <span style={{ color: "#f7768e" }}>-${$d(sc/1e6,2)}M</span>
-                        <span style={{ color: "#565f89" }}> sale commission ({saleCommission}%)</span>
-                        <br />
-                        <span style={{ color: "#7aa2f7" }}>+${$d(principalBack/1e6,2)}M</span>
-                        <span style={{ color: "#565f89" }}> principal back (return OF capital)</span>
-                        <br />
-                        <span style={{ color: "#9ece6a" }}>+${$d(s1/1e6,2)}M</span>
-                        <span style={{ color: "#565f89" }}> ① interest earned (gross)</span>
-                        <br />
-                        <span style={{ color: "#f7768e" }}>-${$d(bc/1e6,2)}M</span>
-                        <span style={{ color: "#565f89" }}> BBC commission ({bbcCommission}%)</span>
-                        <br />
-                        <span style={{ color: "#bb9af7" }}>{s2 >= 0 ? "+" : ""}${$d(s2/1e6,2)}M</span>
-                        <span style={{ color: "#565f89" }}> ② tax shield</span>
-                        <br />
-                        <span style={{ color: "#e0af68" }}>+${$d(s3/1e6,2)}M</span>
-                        <span style={{ color: "#565f89" }}> ③ residual</span>
-                        <br />
-                        <span style={{ borderTop: "1px solid #3b4261", display: "inline-block", paddingTop: 4, marginTop: 4 }}>
-                          <span style={{ color: "#9ece6a", fontWeight: 700 }}>= ${$d(totalReturned/1e6,2)}M</span>
-                          <span style={{ color: "#565f89" }}> total back → </span>
-                          <span style={{ color: profit >= 0 ? "#9ece6a" : "#f7768e", fontWeight: 700 }}>${$d(profit/1e6,2)}M profit</span>
-                          <span style={{ color: "#565f89" }}> → </span>
-                          <span style={{ color: "#e0af68", fontWeight: 700 }}>{pct(R.blendedIRR)} IRR</span>
-                        </span>
                       </div>
                     </div>
                   </div>
