@@ -184,7 +184,7 @@ export default function JOLCOv3() {
   const effectiveExerciseYear = Math.max(poFirstYear, Math.min(poLastYear, exerciseYear));
   // Tax
   const [taxRate, setTaxRate] = useState(30.62);
-  const [foreignInterestTaxPct, setForeignInterestTaxPct] = useState(20.315); // JP withholding on foreign bond interest (Portfolio Interest Exemption: 0% US WHT; Japan levies 20.315% on receipt)
+  const [foreignInterestTaxPct, setForeignInterestTaxPct] = useState(27); // JP SME corporate rate on foreign interest — US levies 0% (Portfolio Interest Exemption IRC §871h); Japan taxes at full corp rate (~27% SME, 30.62% large corp)
   const [specialDeprPct, setSpecialDeprPct] = useState(0);
   const [treasuryYield, setTreasuryYield] = useState(4.25);
 
@@ -331,8 +331,9 @@ export default function JOLCOv3() {
     const blendedIRR = solveIRR(equityCF);
     const equityIRR = solveIRR(equityCF_noTax);
     const totalEquityDeployed = equity + saleCommCost;
-    // Post-tax Treasury yield — uses JP foreign interest tax rate (20.315% withholding), NOT the JOLCO corporate rate
-    // US Treasuries: 0% US withholding (Portfolio Interest Exemption, IRC §871); Japan levies 20.315% on receipt
+    // Post-tax Treasury yield — uses JP SME corporate rate on foreign interest income
+    // US Treasuries: 0% US withholding (Portfolio Interest Exemption, IRC §871h/881c); Japan taxes at full corp rate (no preferential rate for corps on foreign interest)
+    // ~27% for typical SME TK investor; 30.62% for large corp TK investor
     const treasPostTaxYield = treasuryYield * (1 - foreignInterestTaxPct / 100);
     const treasTerminal = totalEquityDeployed * Math.pow(1 + treasPostTaxYield / 100, effectiveExerciseYear);
     const treasProfit = treasTerminal - totalEquityDeployed;
@@ -553,7 +554,7 @@ export default function JOLCOv3() {
               <div style={{ marginTop: 10, borderTop: "1px solid #292e42", paddingTop: 10 }}>
                 <Inp label="Effective Tax Rate" value={taxRate} onChange={setTaxRate} unit="%" help={`${taxRate}% · std JP corp (23.2%) + local + defense surtax`} step={0.01} />
                 <Inp label="US Treasury Yield" value={treasuryYield} onChange={setTreasuryYield} unit="%" step={0.01} />
-                <Inp label="JP Tax on Foreign Interest" value={foreignInterestTaxPct} onChange={setForeignInterestTaxPct} unit="%" step={0.01} help="20.315% = 15% income tax + 2.1% reconstruction + 3% local. US levies 0% (Portfolio Interest Exemption)." />
+                <Inp label="JP Tax on Foreign Interest" value={foreignInterestTaxPct} onChange={setForeignInterestTaxPct} unit="%" step={0.01} help="JP SME corp rate ~27%, large corp 30.62%. No preferential rate for corps on foreign interest. US charges 0% (Portfolio Interest Exemption, IRC §871h)." />
                 <Slider label="Special Depreciation (Yr1)" value={specialDeprPct} onChange={(v) => setSpecialDeprPct(Math.min(v, flagInfo.specialMax))} min={0} max={flagInfo.specialMax} step={1} unit="%" help={`MLIT advanced vessels: ${flagInfo.specialMin}–${flagInfo.specialMax}% for ${flagInfo.label}`} />
               </div>
             </div>
@@ -895,7 +896,7 @@ export default function JOLCOv3() {
                 <div style={{ fontSize: 32, fontWeight: 700, color: "#7aa2f7", fontFamily: F }}>{$d(R.treasPostTaxYield, 2)}%</div>
                 <div style={{ fontSize: 10, color: "#565f89", marginBottom: 4 }}>{effectiveExerciseYear}Y compound · Same equity deployed</div>
                 <div style={{ fontSize: 9, color: "#565f89", marginBottom: 12, padding: "4px 6px", borderRadius: 3, background: "#1e2030" }}>
-                  Pre-tax: {$d(treasuryYield, 2)}% × (1 − {$d(foreignInterestTaxPct, 3)}% JP foreign interest tax) = {$d(R.treasPostTaxYield, 2)}% after tax.<br/>US levies 0% withholding on Treasuries (Portfolio Interest Exemption, IRC §871). Japan withholds {$d(foreignInterestTaxPct, 3)}% on receipt.
+                  Pre-tax: {$d(treasuryYield, 2)}% × (1 − {$d(foreignInterestTaxPct, 2)}% JP corp tax) = {$d(R.treasPostTaxYield, 2)}% after tax.<br/>US charges 0% withholding on Treasuries (Portfolio Interest Exemption, IRC §871h). Japan taxes at full corp rate — no preferential rate for corps on foreign interest. ~27% for SME TK investors, 30.62% for large corp.
                 </div>
                 {[
                   { l: "Capital", v: `$${$d(R.totalEquityDeployed / 1e6, 2)}M` },
