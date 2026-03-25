@@ -352,7 +352,7 @@ export default function JOLCOv3() {
       <div style={{ background: "linear-gradient(135deg, #1a1b26, #24283b)", borderBottom: "1px solid #292e42", padding: "20px 28px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <img src="latest jolco logo.png" alt="JOLCO" style={{ height: 44, width: "auto", objectFit: "contain" }} />
+            <img src="updated bg image.png" alt="JOLCO" style={{ height: 48, width: "auto", objectFit: "contain" }} />
             <div>
               <div style={{ fontSize: 18, fontWeight: 700, color: "#c0caf5", fontFamily: F }}>Equity IRR Calculator <span style={{ fontSize: 11, color: "#9ece6a" }}>v3</span></div>
               <div style={{ fontSize: 10, color: "#565f89" }}>Financed ~{debtPct}% by bank debt, ~{100-debtPct}% by Japanese TK (silent partnership) equity investors · MOF Depreciation · Tax Shield Analysis</div>
