@@ -446,7 +446,23 @@ export default function JOLCOv3() {
 
             <div style={C}>
               {H("#7aa2f7", "Charter & Interest")}
-              <Inp label="Amortization Period" value={amortYrs} onChange={setAmortYrs} unit="yrs" help="Scheduled Amortization Component = Vessel Price ÷ this · also sets the max meaningful exercise year" min={1} max={25} />
+              <Inp label="Amortization Period" value={amortYrs} onChange={setAmortYrs} unit="yrs" help="Fixed hire = VP ÷ this. Can differ from lease term — longer amort = lower hire, larger PO residual at exit" min={1} max={25} />
+              <Inp label="Lease (BBC) Term" value={leaseTerm} onChange={(v) => {
+                setLeaseTerm(v);
+                setPoLastYear(v);
+                if (poFirstYear > v) setPoFirstYear(Math.max(1, v - 1));
+                if (exerciseYear > v) setExerciseYear(v);
+              }} unit="yrs" help="BBC duration — how long charterer pays hire. Often shorter than amort period. Last PO / obligation syncs to this." min={1} max={25} />
+              <div style={{ padding: "6px 8px", borderRadius: 4, background: "#1e2030", marginBottom: 8, fontSize: 9, color: "#565f89", lineHeight: 1.5 }}>
+                {amortYrs !== leaseTerm && (
+                  <span style={{ color: amortYrs > leaseTerm ? "#e0af68" : "#f7768e" }}>
+                    {amortYrs > leaseTerm
+                      ? `⚡ Amort ${amortYrs}yr > Lease ${leaseTerm}yr — lower hire, outstanding balance of ~$${$d((vesselPrice * 1e6 * (1 - leaseTerm / amortYrs)) / 1e6, 2)}M settled via PO at exit`
+                      : `⚠ Amort ${amortYrs}yr < Lease ${leaseTerm}yr — vessel is fully amortized before lease ends; no residual debt at PO`}
+                  </span>
+                )}
+                {amortYrs === leaseTerm && <span>Amort period = Lease term ({amortYrs}yr) — debt fully repaid at lease end, minimal PO residual</span>}
+              </div>
               <div style={{ marginTop: 10, marginBottom: 4, fontSize: 9, fontWeight: 700, color: "#e0af68", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1px solid #292e42", paddingBottom: 4 }}>Bank Loan — JPY (SPC borrows from Japanese bank)</div>
               <Inp label="JPY Base Rate (TONA/TIBOR)" value={jpyBaseRate} onChange={setJpyBaseRate} unit="%" step={0.05} help="Near-zero JPY policy rate · typically 0.05–0.50%" />
               <Inp label="Bank Spread over JPY Base" value={bankSpreadBps} onChange={setBankSpreadBps} unit="bps" step={5} help="Credit spread charged by lending bank" />

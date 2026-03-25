@@ -114,7 +114,8 @@ Use `npm run watch` during development — esbuild will automatically rebuild on
 |-------|---------|-------------|
 | `vesselPrice` | $29.4M | Vessel purchase price |
 | `debtPct` | 70% | Bank debt as % of VP (shown dynamically throughout) |
-| `amortYrs` | 15 yr | Amortization period (Scheduled Amortization Component = VP ÷ amortYrs) |
+| `amortYrs` | 15 yr | Amortization period — fixed hire = VP ÷ amortYrs. **Can differ from `leaseTerm`.** Longer amort = lower hire + larger PO residual debt at exit |
+| `leaseTerm` | 10 yr | BBC lease duration — how long the charterer pays hire. Syncs `poLastYear` (last PO / obligation). Typically shorter than `amortYrs` |
 | `jpyBaseRate` | 0.10% | TONA/TIBOR JPY base rate |
 | `bankSpreadBps` | 50 bps | Bank credit spread over JPY base |
 | `swapCostBps` | 45 bps | USD/JPY cross-currency basis swap cost |
