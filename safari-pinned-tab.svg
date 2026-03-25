@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Mount Fuji silhouette — solid black for Safari mask-icon (color set via HTML) -->
+  <circle cx="16" cy="16" r="16" fill="black"/>
+  <!-- Mountain body -->
+  <polygon points="16,4 2,23 30,23" fill="white"/>
+  <!-- Snow cap -->
+  <polygon points="16,4 11,13 21,13" fill="#cccccc"/>
+  <!-- Sun -->
+  <circle cx="16" cy="9" r="2.2" fill="#e0af68"/>
+  <!-- Water base -->
+  <rect x="2" y="23" width="28" height="3" fill="#1a1b26" rx="1"/>
+</svg>
