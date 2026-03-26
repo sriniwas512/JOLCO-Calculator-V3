@@ -162,6 +162,11 @@ export default function JOLCOv3() {
   // because the PO tracks the remaining financing balance
   const [poFirstYear, setPoFirstYear] = useState(5);
   const [poLastYear, setPoLastYear] = useState(10);
+  // Lock-in period: BBC cannot exercise PO before this many years have elapsed
+  // Default = 4 years → earliest exercise is Year 5
+  const [lockInPeriod, setLockInPeriod] = useState(4);
+  // Effective first PO year respects lock-in: charterer may not exercise before lock-in ends
+  const effectivePOFirstYear = Math.max(poFirstYear, lockInPeriod + 1);
   const effectiveDecline = vesselPrice / amortYrs;
 
   // Auto-generate schedule but allow per-year overrides
@@ -170,17 +175,17 @@ export default function JOLCOv3() {
     const sched = [];
     // PO at first option year ≈ vessel price minus principal repaid up to that point
     const annualRepay = vesselPrice / amortYrs;
-    for (let yr = poFirstYear; yr <= poLastYear; yr++) {
+    for (let yr = effectivePOFirstYear; yr <= poLastYear; yr++) {
       const defaultPrice = Math.max(0, vesselPrice - annualRepay * yr);
       const price = poOverrides[yr] != null ? poOverrides[yr] : Math.round(defaultPrice * 10) / 10;
       sched.push({ yr, price, obligatory: yr === poLastYear, isOverridden: poOverrides[yr] != null });
     }
     return sched;
-  }, [vesselPrice, amortYrs, poFirstYear, poLastYear, poOverrides]);
+  }, [vesselPrice, amortYrs, effectivePOFirstYear, poLastYear, poOverrides]);
 
   const [exerciseYear, setExerciseYear] = useState(10);
-  // Ensure exerciseYear is within PO range
-  const effectiveExerciseYear = Math.max(poFirstYear, Math.min(poLastYear, exerciseYear));
+  // Ensure exerciseYear is within PO range and respects lock-in period
+  const effectiveExerciseYear = Math.max(effectivePOFirstYear, Math.min(poLastYear, exerciseYear));
   // Tax
   const [taxRate, setTaxRate] = useState(30.62);
   const [foreignInterestTaxPct, setForeignInterestTaxPct] = useState(27); // JP SME corporate rate on foreign interest — US levies 0% (Portfolio Interest Exemption IRC §871h); Japan taxes at full corp rate (~27% SME, 30.62% large corp)
@@ -340,7 +345,7 @@ export default function JOLCOv3() {
     const spread = blendedIRR != null ? blendedIRR - treasPostTaxYield / 100 : null;
 
     return { VP, debt, equity, saleCommCost, totalBbcComm, totalEquityDeployed, equityCF, equityCF_noTax, years, depr, blendedIRR, equityIRR, treasTerminal, treasProfit, jolcoProfit, spread, totalStream1, totalStream2, totalStream3, monthlyFixed, bankAllInRate, equityAllInRate, poPriceMil, treasPostTaxYield };
-  }, [vesselPrice, debtPct, amortYrs, sofrRate, spreadBps, jpyBaseRate, bankSpreadBps, swapCostBps, saleCommission, bbcCommission, taxRate, foreignInterestTaxPct, usefulLife, specialDeprPct, treasuryYield, flagId, effectiveExerciseYear, poSchedule]);
+  }, [vesselPrice, debtPct, amortYrs, sofrRate, spreadBps, jpyBaseRate, bankSpreadBps, swapCostBps, saleCommission, bbcCommission, taxRate, foreignInterestTaxPct, usefulLife, specialDeprPct, treasuryYield, flagId, effectiveExerciseYear, poSchedule, lockInPeriod]);
 
   const C = { background: "#1a1b26", borderRadius: 10, padding: 18, border: "1px solid #292e42", marginBottom: 14 };
   const H = (color, text) => <div style={{ fontSize: 13, fontWeight: 700, color: "#c0caf5", marginBottom: 10, fontFamily: F, display: "flex", alignItems: "center", gap: 8 }}><span style={{ color }}>●</span>{text}</div>;
@@ -504,10 +509,29 @@ export default function JOLCOv3() {
 
             <div style={C}>
               {H("#bb9af7", "Purchase Options & Tax")}
+              {/* Lock-in Period */}
+              <div style={{ marginBottom: 10 }}>
+                <Inp label="Lock-In Period" value={lockInPeriod} onChange={(v) => {
+                  setLockInPeriod(v);
+                  // Push poFirstYear forward if needed
+                  if (poFirstYear < v + 1) setPoFirstYear(v + 1);
+                  // Push exerciseYear forward if it falls inside the locked window
+                  if (exerciseYear < v + 1) setExerciseYear(v + 1);
+                }} unit="yrs" min={0} max={poLastYear - 1} help={`BBC may not exercise PO before Year ${lockInPeriod + 1}. First permissible exercise: Year ${lockInPeriod + 1}.`} />
+                {lockInPeriod > 0 && (
+                  <div style={{ marginTop: 4, padding: "5px 8px", borderRadius: 4, background: "rgba(187,154,247,0.08)", border: "1px solid #bb9af744", fontSize: 10, color: "#bb9af7", lineHeight: 1.5 }}>
+                    Locked: Yrs 1–{lockInPeriod} · First exercise: Yr {lockInPeriod + 1}
+                  </div>
+                )}
+              </div>
               {/* PO range */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
-                <Inp label="First PO Year" value={poFirstYear} onChange={(v) => { setPoFirstYear(v); if (exerciseYear < v) setExerciseYear(v); }} unit="" min={1} max={poLastYear} />
-                <Inp label="Last Year (Oblig.)" value={poLastYear} onChange={(v) => { setPoLastYear(v); if (exerciseYear > v) setExerciseYear(v); }} unit="" min={poFirstYear} max={25} />
+                <Inp label="First PO Year" value={poFirstYear} onChange={(v) => {
+                  const clamped = Math.max(v, lockInPeriod + 1);
+                  setPoFirstYear(clamped);
+                  if (exerciseYear < clamped) setExerciseYear(clamped);
+                }} unit="" min={lockInPeriod + 1} max={poLastYear} />
+                <Inp label="Last Year (Oblig.)" value={poLastYear} onChange={(v) => { setPoLastYear(v); if (exerciseYear > v) setExerciseYear(v); }} unit="" min={effectivePOFirstYear} max={25} />
               </div>
               {/* Exercise Year Selector */}
               <div style={{ marginBottom: 10 }}>
@@ -527,6 +551,21 @@ export default function JOLCOv3() {
               <div style={{ padding: 8, borderRadius: 5, background: "#1e2030", marginBottom: 10, fontSize: 10, color: "#a9b1d6", lineHeight: 1.5 }}>
                 <strong style={{ color: "#bb9af7" }}>Default PO decline:</strong> ${$d(effectiveDecline, 2)}M/yr (= Vessel Price ÷ Amort Period). PO tracks remaining financing balance. Edit any year below to override.
               </div>
+              {/* Locked years — visual indicator */}
+              {lockInPeriod > 0 && (
+                <div style={{ marginBottom: 6 }}>
+                  <div style={{ fontSize: 9, color: "#a9b1d6", display: "flex", gap: 4, marginBottom: 4, fontFamily: F }}>
+                    <span style={{ width: 32 }}>YEAR</span><span style={{ flex: 1 }}>STATUS</span>
+                  </div>
+                  {Array.from({ length: lockInPeriod }, (_, i) => i + 1).map(yr => (
+                    <div key={yr} style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2, padding: "3px 4px", borderRadius: 4, background: "rgba(247,118,142,0.04)", border: "1px solid #f7768e22" }}>
+                      <span style={{ fontSize: 11, color: "#f7768e88", fontFamily: F, width: 32 }}>Yr{yr}</span>
+                      <span style={{ fontSize: 10, color: "#f7768e88", fontStyle: "italic" }}>— locked (no exercise permitted)</span>
+                      <span style={{ fontSize: 8, color: "#f7768e66", marginLeft: "auto", fontFamily: F }}>LOCK</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               {/* PO Schedule — editable per year */}
               <div style={{ fontSize: 9, color: "#a9b1d6", display: "flex", gap: 4, marginBottom: 4, fontFamily: F }}>
                 <span style={{ width: 32 }}>YEAR</span><span style={{ width: 76 }}>PO PRICE</span><span style={{ flex: 1 }}>STATUS</span>
