@@ -21578,9 +21578,9 @@
     const [swapCostBps, setSwapCostBps] = (0, import_react.useState)(35);
     const [saleCommission, setSaleCommission] = (0, import_react.useState)(2);
     const [bbcCommission, setBbcCommission] = (0, import_react.useState)(1.25);
-    const [poFirstYear, setPoFirstYear] = (0, import_react.useState)(2);
+    const [poFirstYear, setPoFirstYear] = (0, import_react.useState)(5);
     const [poLastYear, setPoLastYear] = (0, import_react.useState)(10);
-    const [poPremium, setPoPremium] = (0, import_react.useState)(0);
+    const [poPremium, setPoPremium] = (0, import_react.useState)(0.5);
     const lockInPeriod = poFirstYear - 1;
     const effectivePOFirstYear = poFirstYear;
     const effectiveDecline = vesselPrice / amortYrs;

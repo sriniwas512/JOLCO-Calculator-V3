@@ -172,9 +172,9 @@ export default function JOLCOv3() {
   const [bbcCommission, setBbcCommission] = useState(1.25);
   // Purchase Option schedule
   // Formula: PO(N) = max(0, VP − VP/amortYrs × N) + poPremium
-  const [poFirstYear, setPoFirstYear] = useState(2); // lock-in = poFirstYear-1; default 1yr lock-in
+  const [poFirstYear, setPoFirstYear] = useState(5); // lock-in = poFirstYear-1; default 4yr lock-in
   const [poLastYear, setPoLastYear] = useState(10);
-  const [poPremium, setPoPremium] = useState(0);  // Flat $M margin added above financing balance
+  const [poPremium, setPoPremium] = useState(0.5);  // Flat $M margin added above financing balance
   // Lock-in period is simply the number of years before the first exercise year — not a separate state
   const lockInPeriod = poFirstYear - 1;
   const effectivePOFirstYear = poFirstYear;
