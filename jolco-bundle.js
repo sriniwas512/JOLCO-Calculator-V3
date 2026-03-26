@@ -21601,7 +21601,7 @@
     const [taxRate, setTaxRate] = (0, import_react.useState)(30.62);
     const [capGainsTaxRate, setCapGainsTaxRate] = (0, import_react.useState)(20.315);
     const [foreignInterestTaxPct, setForeignInterestTaxPct] = (0, import_react.useState)(27);
-    const [specialDeprPct, setSpecialDeprPct] = (0, import_react.useState)(0);
+    const [specialDeprPct, setSpecialDeprPct] = (0, import_react.useState)(30);
     const [treasuryYield, setTreasuryYield] = (0, import_react.useState)(4.25);
     const vType = VESSEL_DB.find((v) => v.id === vesselTypeId);
     const flagInfo = FLAG_OPTIONS.find((f) => f.id === flagId);

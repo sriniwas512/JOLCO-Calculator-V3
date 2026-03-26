@@ -202,7 +202,7 @@ export default function JOLCOv3() {
   // Cap-gains tax on PO exercise: JP individual rate = 20.315% (15.315% national + 5% local)
   const [capGainsTaxRate, setCapGainsTaxRate] = useState(20.315);
   const [foreignInterestTaxPct, setForeignInterestTaxPct] = useState(27); // JP SME corporate rate on foreign interest — US levies 0% (Portfolio Interest Exemption IRC §871h); Japan taxes at full corp rate (~27% SME, 30.62% large corp)
-  const [specialDeprPct, setSpecialDeprPct] = useState(0);
+  const [specialDeprPct, setSpecialDeprPct] = useState(30);
   const [treasuryYield, setTreasuryYield] = useState(4.25);
 
   const vType = VESSEL_DB.find(v => v.id === vesselTypeId);
