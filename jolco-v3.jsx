@@ -165,8 +165,8 @@ export default function JOLCOv3() {
   const [leaseTerm, setLeaseTerm] = useState(10);
   const [sofrRate, setSofrRate] = useState(4.3);
   const [spreadBps, setSpreadBps] = useState(280);
-  const [jpyBaseRate, setJpyBaseRate] = useState(0.50);   // TONA (BOJ rate ~0.50% as of mid-2024; raised from near-zero)
-  const [bankSpreadBps, setBankSpreadBps] = useState(100); // bps over TONA (80–130 bps for JOLCO non-recourse, per market data)
+  const [jpyBaseRate, setJpyBaseRate] = useState(1.80);   // TIBOR
+  const [bankSpreadBps, setBankSpreadBps] = useState(100); // bps over TIBOR
   const [swapCostBps, setSwapCostBps] = useState(35);    // USD/JPY cross-currency basis (20–45 bps in 2024, narrowing trend)
   const [saleCommission, setSaleCommission] = useState(2.0);
   const [bbcCommission, setBbcCommission] = useState(1.25);
@@ -520,7 +520,7 @@ export default function JOLCOv3() {
                 {amortYrs === leaseTerm && <span>Amort period = Lease term ({amortYrs}yr) — debt fully repaid at lease end, minimal PO residual</span>}
               </div>
               <div style={{ marginTop: 10, marginBottom: 4, fontSize: 10, fontWeight: 700, color: "#e0af68", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1px solid #292e42", paddingBottom: 4 }}>Bank Loan — JPY (SPC borrows from Japanese bank)</div>
-              <Inp label="JPY Base Rate (TONA/TIBOR)" value={jpyBaseRate} onChange={setJpyBaseRate} unit="%" step={0.05} help="Near-zero JPY policy rate · typically 0.05–0.50%" />
+              <Inp label="JPY Base Rate (TIBOR)" value={jpyBaseRate} onChange={setJpyBaseRate} unit="%" step={0.05} />
               <Inp label="Bank Spread over JPY Base" value={bankSpreadBps} onChange={setBankSpreadBps} unit="bps" step={5} help="Credit spread charged by lending bank" />
               <Inp label="USD/JPY Cross-Currency Swap Cost" value={swapCostBps} onChange={setSwapCostBps} unit="bps" step={5} help="Cost to swap JPY loan obligation into USD cash flows" />
               <div style={{ padding: "6px 8px", borderRadius: 4, background: "#1e2030", marginBottom: 10, fontSize: 10, color: "#a9b1d6" }}>
@@ -759,7 +759,7 @@ export default function JOLCOv3() {
                 return (
                   <div>
                     <Row val={R.equity} neg color="#f7768e" label={`Equity In — ${100-debtPct}% of Vessel Price`}
-                      explain={`TK investors (匿名組合員) put in ${100-debtPct}% of the vessel cost. The remaining ${debtPct}% is a non-recourse JPY bank loan to the SPC at ${(R.bankAllInRate*100).toFixed(2)}% all-in USD equivalent (TONA + ${bankSpreadBps}bps spread + ${swapCostBps}bps cross-currency swap). The bank loan is secured by a vessel mortgage and charter hire assignment — investors are not on the hook for the loan.`} />
+                      explain={`TK investors (匿名組合員) put in ${100-debtPct}% of the vessel cost. The remaining ${debtPct}% is a non-recourse JPY bank loan to the SPC at ${(R.bankAllInRate*100).toFixed(2)}% all-in USD equivalent (TIBOR + ${bankSpreadBps}bps spread + ${swapCostBps}bps cross-currency swap). The bank loan is secured by a vessel mortgage and charter hire assignment — investors are not on the hook for the loan.`} />
                     <Row val={sc} neg color="#f7768e" label={`Sale Commission — ${saleCommission}% of Vessel Price`}
                       explain={`One-time brokerage on the vessel purchase, paid at Year 0. Industry standard is 1% per broker side (buyer's broker + seller's broker). Reduces the equity invested but is deductible for SPC tax purposes.`} />
                     <div style={{ borderTop: "1px dashed #3b4261", margin: "4px 0 12px 0" }} />
