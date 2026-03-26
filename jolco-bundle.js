@@ -21573,7 +21573,7 @@
     const [leaseTerm, setLeaseTerm] = (0, import_react.useState)(10);
     const [sofrRate, setSofrRate] = (0, import_react.useState)(4.3);
     const [spreadBps, setSpreadBps] = (0, import_react.useState)(280);
-    const [jpyBaseRate, setJpyBaseRate] = (0, import_react.useState)(1.8);
+    const [jpyBaseRate, setJpyBaseRate] = (0, import_react.useState)(1.3);
     const [bankSpreadBps, setBankSpreadBps] = (0, import_react.useState)(100);
     const [swapCostBps, setSwapCostBps] = (0, import_react.useState)(35);
     const [saleCommission, setSaleCommission] = (0, import_react.useState)(2);

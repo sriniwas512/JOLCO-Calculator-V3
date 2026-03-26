@@ -165,7 +165,7 @@ export default function JOLCOv3() {
   const [leaseTerm, setLeaseTerm] = useState(10);
   const [sofrRate, setSofrRate] = useState(4.3);
   const [spreadBps, setSpreadBps] = useState(280);
-  const [jpyBaseRate, setJpyBaseRate] = useState(1.80);   // TIBOR
+  const [jpyBaseRate, setJpyBaseRate] = useState(1.30);   // TIBOR
   const [bankSpreadBps, setBankSpreadBps] = useState(100); // bps over TIBOR
   const [swapCostBps, setSwapCostBps] = useState(35);    // USD/JPY cross-currency basis (20–45 bps in 2024, narrowing trend)
   const [saleCommission, setSaleCommission] = useState(2.0);
