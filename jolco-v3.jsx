@@ -531,17 +531,15 @@ export default function JOLCOv3() {
               <Inp label="Equity Spread over SOFR" value={spreadBps} onChange={setSpreadBps} unit="bps" step={10} help="Spread reflecting charterer credit + vessel risk" />
               {(() => {
                 const mFixed = R.monthlyFixed;
-                const mVariableBank   = R.debt   * R.bankAllInRate   / 12;
-                const mVariableEquity = R.equity * R.equityAllInRate / 12;
-                const mVariable = mVariableBank + mVariableEquity;
+                // Variable hire = charterHireRate × TOTAL outstanding balance (same formula as IRR model)
+                const mVariable = R.VP * R.equityAllInRate / 12;
                 const mTotal = mFixed + mVariable;
                 return (
                   <div style={{ padding: 10, borderRadius: 6, background: "#1e2030", border: "1px solid #292e42" }}>
                     {[
                       { label: "Scheduled Amortization Component (rate-insensitive)", val: mFixed, color: "#9ece6a", sub: `VP ÷ ${amortYrs}yr ÷ 12 · does not move with SOFR or JPY rates` },
-                      { label: "Financing Return Component — Bank (JPY→USD · Yr1)", val: mVariableBank, color: "#e0af68", sub: `${(R.bankAllInRate * 100).toFixed(2)}% effective on ${$d(R.debt/1e6,1)}M bank bal. (${jpyBaseRate}% JPY + ${bankSpreadBps}bps + ${swapCostBps}bps swap) · tied to JPY base + swap` },
-                      { label: "Financing Return Component — Equity (USD · Yr1)", val: mVariableEquity, color: "#7aa2f7", sub: `${(R.equityAllInRate * 100).toFixed(2)}% on ${$d(R.equity/1e6,1)}M equity bal. (SOFR ${sofrRate}% + ${spreadBps}bps) · tied to SOFR` },
-                      { label: "Total Monthly Hire (Yr 1)", val: mTotal, color: "#bb9af7", sub: "Amortization + Financing Return (Bank + Equity) · total cost to charterer" },
+                      { label: "Variable Charter Hire Component (Yr 1)", val: mVariable, color: "#7aa2f7", sub: `${(R.equityAllInRate * 100).toFixed(2)}% on $${$d(R.VP/1e6,1)}M total vessel balance (SOFR ${sofrRate}% + ${spreadBps}bps) · tied to SOFR` },
+                      { label: "Total Monthly Hire (Yr 1)", val: mTotal, color: "#bb9af7", sub: "Amortization + Variable · total cost to charterer before BBC commission" },
                     ].map((row, i, arr) => (
                       <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingBottom: 8, marginBottom: i < arr.length - 1 ? 8 : 0, borderBottom: i < arr.length - 1 ? "1px solid #292e42" : "none" }}>
                         <div>
