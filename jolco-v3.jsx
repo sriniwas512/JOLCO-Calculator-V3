@@ -158,24 +158,12 @@ export default function JOLCOv3() {
   const [saleCommission, setSaleCommission] = useState(2.0);
   const [bbcCommission, setBbcCommission] = useState(1.25);
   // Purchase Option schedule
-  // Base formula: PO(N) = max(0, VP − VP/amortYrs × N)  — tracks remaining financing balance
-  // Premium: a negotiated margin above the financing balance, editable per deal
-  // Full formula: PO(N) = max(0, VP − VP/amortYrs × N) + poPremium
+  // Formula: PO(N) = max(0, VP − VP/amortYrs × N) + poPremium
   const [poFirstYear, setPoFirstYear] = useState(5);
   const [poLastYear, setPoLastYear] = useState(10);
-  // Lock-in period: BBC cannot exercise PO before this many years have elapsed
-  // Default = 4 years → earliest exercise is Year 5
-  const [lockInPeriod, setLockInPeriod] = useState(4);
-  // Effective first PO year respects lock-in: charterer may not exercise before lock-in ends
+  const [lockInPeriod, setLockInPeriod] = useState(4); // BBC cannot exercise PO before this many years
+  const [poPremium, setPoPremium] = useState(0);       // Flat $M margin added above financing balance
   const effectivePOFirstYear = Math.max(poFirstYear, lockInPeriod + 1);
-
-  // PO Premium ($M): flat amount added to the amortisation-based formula at every year.
-  // Represents the negotiated margin the BBC charterer pays above the residual financing balance.
-  // Increases gross Stream 3 but also increases the capital-gain base → partially offset by tax.
-  // Default = 0 (pure amortisation formula). Set to match a specific term sheet.
-  const [poPremium, setPoPremium] = useState(0);
-
-  // Base annual decline = VP / amortYrs (fixed hire amortisation rate)
   const effectiveDecline = vesselPrice / amortYrs;
 
   // Auto-generate schedule but allow per-year overrides
@@ -193,13 +181,11 @@ export default function JOLCOv3() {
   }, [vesselPrice, amortYrs, effectivePOFirstYear, poLastYear, poPremium, poOverrides]);
 
   const [exerciseYear, setExerciseYear] = useState(10);
-  // Ensure exerciseYear is within PO range and respects lock-in period
+  // Ensure exerciseYear is within PO range and respects lock-in
   const effectiveExerciseYear = Math.max(effectivePOFirstYear, Math.min(poLastYear, exerciseYear));
   // Tax
   const [taxRate, setTaxRate] = useState(30.62);
-  // Capital-gains tax rate on PO exercise: JP individual investor rate = 20.315%
-  // (15.315% national income tax incl. 2.1% reconstruction surtax + 5% local inhabitant tax)
-  // Distinct from the ordinary corporate income rate used for Stream 2.
+  // Cap-gains tax on PO exercise: JP individual rate = 20.315% (15.315% national + 5% local)
   const [capGainsTaxRate, setCapGainsTaxRate] = useState(20.315);
   const [foreignInterestTaxPct, setForeignInterestTaxPct] = useState(27); // JP SME corporate rate on foreign interest — US levies 0% (Portfolio Interest Exemption IRC §871h); Japan taxes at full corp rate (~27% SME, 30.62% large corp)
   const [specialDeprPct, setSpecialDeprPct] = useState(0);
@@ -358,7 +344,7 @@ export default function JOLCOv3() {
     const spread = blendedIRR != null ? blendedIRR - treasPostTaxYield / 100 : null;
 
     return { VP, debt, equity, saleCommCost, totalBbcComm, totalEquityDeployed, equityCF, equityCF_noTax, years, depr, blendedIRR, equityIRR, treasTerminal, treasProfit, jolcoProfit, spread, totalStream1, totalStream2, totalStream3, monthlyFixed, bankAllInRate, equityAllInRate, poPriceMil, treasPostTaxYield };
-  }, [vesselPrice, debtPct, amortYrs, sofrRate, spreadBps, jpyBaseRate, bankSpreadBps, swapCostBps, saleCommission, bbcCommission, taxRate, capGainsTaxRate, foreignInterestTaxPct, usefulLife, specialDeprPct, treasuryYield, flagId, effectiveExerciseYear, poSchedule, lockInPeriod, poPremium]);
+  }, [vesselPrice, debtPct, amortYrs, sofrRate, spreadBps, jpyBaseRate, bankSpreadBps, swapCostBps, saleCommission, bbcCommission, taxRate, capGainsTaxRate, foreignInterestTaxPct, usefulLife, specialDeprPct, treasuryYield, flagId, effectiveExerciseYear, poSchedule]);
 
   const C = { background: "#1a1b26", borderRadius: 10, padding: 18, border: "1px solid #292e42", marginBottom: 14 };
   const H = (color, text) => <div style={{ fontSize: 13, fontWeight: 700, color: "#c0caf5", marginBottom: 10, fontFamily: F, display: "flex", alignItems: "center", gap: 8 }}><span style={{ color }}>●</span>{text}</div>;
@@ -471,7 +457,8 @@ export default function JOLCOv3() {
                 setLeaseTerm(v);
                 setPoLastYear(v);
                 setExerciseYear(v);
-                if (poFirstYear > v) setPoFirstYear(Math.max(1, v - 1));
+                if (poFirstYear > v) setPoFirstYear(Math.max(lockInPeriod + 1, v - 1));
+                if (lockInPeriod >= v) setLockInPeriod(Math.max(0, v - 1));
               }} unit="yrs" help="BBC duration — how long charterer pays hire. Often shorter than amort period. Last PO / obligation syncs to this." min={1} max={25} />
               <div style={{ padding: "6px 8px", borderRadius: 4, background: "#1e2030", marginBottom: 8, fontSize: 10, color: "#a9b1d6", lineHeight: 1.5 }}>
                 {amortYrs !== leaseTerm && (
@@ -522,27 +509,19 @@ export default function JOLCOv3() {
 
             <div style={C}>
               {H("#bb9af7", "Purchase Options & Tax")}
-              {/* Lock-in Period */}
-              <div style={{ marginBottom: 10 }}>
-                <Inp label="Lock-In Period" value={lockInPeriod} onChange={(v) => {
-                  setLockInPeriod(v);
-                  // Push poFirstYear forward if needed
-                  if (poFirstYear < v + 1) setPoFirstYear(v + 1);
-                  // Push exerciseYear forward if it falls inside the locked window
-                  if (exerciseYear < v + 1) setExerciseYear(v + 1);
-                }} unit="yrs" min={0} max={poLastYear - 1} help={`BBC may not exercise PO before Year ${lockInPeriod + 1}. First permissible exercise: Year ${lockInPeriod + 1}.`} />
-                {lockInPeriod > 0 && (
-                  <div style={{ marginTop: 4, padding: "5px 8px", borderRadius: 4, background: "rgba(187,154,247,0.08)", border: "1px solid #bb9af744", fontSize: 10, color: "#bb9af7", lineHeight: 1.5 }}>
-                    Locked: Yrs 1–{lockInPeriod} · First exercise: Yr {lockInPeriod + 1}
-                  </div>
-                )}
-              </div>
+              {/* Lock-in period */}
+              <Inp label="Lock-In Period" value={lockInPeriod} onChange={(v) => {
+                const n = Math.max(0, v);
+                setLockInPeriod(n);
+                if (poFirstYear <= n) setPoFirstYear(n + 1);
+                if (exerciseYear <= n) setExerciseYear(n + 1);
+              }} unit="yrs" min={0} max={poLastYear - 1} help={`BBC cannot exercise PO before Year ${lockInPeriod + 1}. First permitted: Yr ${lockInPeriod + 1}.`} />
               {/* PO range */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
                 <Inp label="First PO Year" value={poFirstYear} onChange={(v) => {
-                  const clamped = Math.max(v, lockInPeriod + 1);
-                  setPoFirstYear(clamped);
-                  if (exerciseYear < clamped) setExerciseYear(clamped);
+                  const n = Math.max(v, lockInPeriod + 1);
+                  setPoFirstYear(n);
+                  if (exerciseYear < n) setExerciseYear(n);
                 }} unit="" min={lockInPeriod + 1} max={poLastYear} />
                 <Inp label="Last Year (Oblig.)" value={poLastYear} onChange={(v) => { setPoLastYear(v); if (exerciseYear > v) setExerciseYear(v); }} unit="" min={effectivePOFirstYear} max={25} />
               </div>
@@ -561,46 +540,19 @@ export default function JOLCOv3() {
                 )}
               </div>
               {/* PO Premium */}
-              <div style={{ marginBottom: 10, padding: "8px 10px", borderRadius: 6, border: `1px solid ${poPremium !== 0 ? "#9ece6a55" : "#3b4261"}`, background: poPremium !== 0 ? "rgba(158,206,106,0.04)" : "transparent" }}>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#9ece6a", letterSpacing: "0.05em", marginBottom: 4, fontFamily: F, textTransform: "uppercase" }}>PO Premium ($M)</label>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <input type="number" value={poPremium} step={0.1}
-                    onChange={(e) => setPoPremium(parseFloat(e.target.value) || 0)}
-                    style={{ flex: 1, padding: "7px 9px", borderRadius: 5, border: `1px solid ${poPremium !== 0 ? "#9ece6a" : "#3b4261"}`, background: "#1a1b26", color: poPremium !== 0 ? "#9ece6a" : "#c0caf5", fontSize: 14, fontFamily: F, outline: "none" }}
-                    onFocus={(e) => e.target.style.borderColor = "#9ece6a"} onBlur={(e) => e.target.style.borderColor = poPremium !== 0 ? "#9ece6a" : "#3b4261"} />
-                  <span style={{ fontSize: 11, color: "#a9b1d6", minWidth: 24 }}>$M</span>
-                  {poPremium !== 0 && (
-                    <button onClick={() => setPoPremium(0)} style={{ fontSize: 9, color: "#f7768e", background: "none", border: "none", cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}>reset to 0</button>
-                  )}
-                </div>
-                <div style={{ fontSize: 10, color: "#a9b1d6", marginTop: 4, lineHeight: 1.5 }}>
-                  Negotiated margin above the residual financing balance. Added flat at every exercise year.
-                  Raises gross Stream 3 but enlarges the cap-gain base →
-                  extra tax = premium × {$d(capGainsTaxRate, 2)}% (cap-gains rate) on any amount above book value.
-                  Net benefit ≈ premium × (1 − {$d(capGainsTaxRate, 2)}%).
-                </div>
+              <Inp label="PO Premium" value={poPremium} onChange={setPoPremium} unit="$M" step={0.1} help={`Flat margin added above financing balance at every year. PO(N) = max(0, VP - VP/${amortYrs} x N) + premium. Net benefit after ${capGainsTaxRate}% cap-gains tax ≈ premium x ${$d(1 - capGainsTaxRate/100, 4)}.`} />
+              {/* PO decline info */}
+              <div style={{ padding: 8, borderRadius: 5, background: "#1e2030", marginBottom: 10, fontSize: 10, color: "#a9b1d6", lineHeight: 1.5 }}>
+                <strong style={{ color: "#bb9af7" }}>PO(N)</strong> = max(0, {$d(vesselPrice,1)} − {$d(effectiveDecline,3)}×N){poPremium !== 0 ? ` + ${$d(poPremium,2)}` : ""}. Cap-gain tax = max(0, PO−BV) × {$d(capGainsTaxRate,3)}%. Override any row below.
               </div>
-              {/* Formula info */}
-              <div style={{ padding: 8, borderRadius: 5, background: "#1e2030", marginBottom: 10, fontSize: 10, color: "#a9b1d6", lineHeight: 1.6 }}>
-                <strong style={{ color: "#bb9af7" }}>PO(N)</strong> = max(0, {$d(vesselPrice, 1)} − {$d(effectiveDecline, 3)}×N){poPremium !== 0 ? <span style={{ color: "#9ece6a" }}> + {$d(poPremium, 2)}</span> : null}{" · "}
-                Cap-gain tax = max(0, PO − book value) × <span style={{ color: "#f7768e" }}>{$d(capGainsTaxRate, 2)}%</span>.
-                {" "}Override any row below for non-linear schedules.
-              </div>
-              {/* Locked years — visual indicator */}
-              {lockInPeriod > 0 && (
-                <div style={{ marginBottom: 6 }}>
-                  <div style={{ fontSize: 9, color: "#a9b1d6", display: "flex", gap: 4, marginBottom: 4, fontFamily: F }}>
-                    <span style={{ width: 32 }}>YEAR</span><span style={{ flex: 1 }}>STATUS</span>
-                  </div>
-                  {Array.from({ length: lockInPeriod }, (_, i) => i + 1).map(yr => (
-                    <div key={yr} style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2, padding: "3px 4px", borderRadius: 4, background: "rgba(247,118,142,0.04)", border: "1px solid #f7768e22" }}>
-                      <span style={{ fontSize: 11, color: "#f7768e88", fontFamily: F, width: 32 }}>Yr{yr}</span>
-                      <span style={{ fontSize: 10, color: "#f7768e88", fontStyle: "italic" }}>— locked (no exercise permitted)</span>
-                      <span style={{ fontSize: 8, color: "#f7768e66", marginLeft: "auto", fontFamily: F }}>LOCK</span>
-                    </div>
-                  ))}
+              {/* Locked years */}
+              {lockInPeriod > 0 && Array.from({ length: lockInPeriod }, (_, i) => i + 1).map(yr => (
+                <div key={yr} style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2, padding: "3px 4px", borderRadius: 4, opacity: 0.45 }}>
+                  <span style={{ fontSize: 11, color: "#f7768e", fontFamily: F, width: 32 }}>Yr{yr}</span>
+                  <span style={{ fontSize: 10, color: "#f7768e", fontStyle: "italic" }}>locked — no exercise</span>
+                  <span style={{ fontSize: 8, color: "#f7768e", marginLeft: "auto", fontFamily: F }}>LOCK</span>
                 </div>
-              )}
+              ))}
               {/* PO Schedule — editable per year */}
               <div style={{ fontSize: 9, color: "#a9b1d6", display: "flex", gap: 4, marginBottom: 4, fontFamily: F }}>
                 <span style={{ width: 32 }}>YEAR</span><span style={{ width: 76 }}>PO PRICE</span><span style={{ flex: 1 }}>STATUS</span>
@@ -625,8 +577,8 @@ export default function JOLCOv3() {
                 </div>
               ))}
               <div style={{ marginTop: 10, borderTop: "1px solid #292e42", paddingTop: 10 }}>
-                <Inp label="Ordinary Income Tax Rate" value={taxRate} onChange={setTaxRate} unit="%" help={`${taxRate}% · std JP corp (23.2%) + local + defense surtax. Applied to Stream 2 (tax shield on hire income / depreciation losses).`} step={0.01} />
-                <Inp label="Cap-Gains Tax Rate (PO)" value={capGainsTaxRate} onChange={setCapGainsTaxRate} unit="%" help="Applied to Stream 3: max(0, PO price − tax book value). Default 20.315% = JP individual rate (15.315% national incl. 2.1% reconstruction surtax + 5% local inhabitant tax). Adjust for corporate investors (30.62%) or treaty scenarios." step={0.01} />
+                <Inp label="Ordinary Income Tax Rate" value={taxRate} onChange={setTaxRate} unit="%" help={`${taxRate}% · std JP corp (23.2%) + local + defense surtax. Stream 2 (tax shield).`} step={0.01} />
+                <Inp label="Cap-Gains Tax Rate (PO)" value={capGainsTaxRate} onChange={setCapGainsTaxRate} unit="%" help="Stream 3 cap-gain on PO exercise. Default 20.315% = JP individual (15.315% national incl. 2.1% surtax + 5% local). Corporate investors: 30.62%." step={0.01} />
                 <Inp label="US Treasury Yield" value={treasuryYield} onChange={setTreasuryYield} unit="%" step={0.01} />
                 <Inp label="JP Tax on Foreign Interest" value={foreignInterestTaxPct} onChange={setForeignInterestTaxPct} unit="%" step={0.01} help="JP SME corp rate ~27%, large corp 30.62%. No preferential rate for corps on foreign interest. US charges 0% (Portfolio Interest Exemption, IRC §871h)." />
                 <Slider label="Special Depreciation (Yr1)" value={specialDeprPct} onChange={(v) => setSpecialDeprPct(Math.min(v, flagInfo.specialMax))} min={0} max={flagInfo.specialMax} step={1} unit="%" help={`MLIT advanced vessels: ${flagInfo.specialMin}–${flagInfo.specialMax}% for ${flagInfo.label}`} />
