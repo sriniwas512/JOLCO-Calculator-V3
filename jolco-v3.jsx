@@ -161,9 +161,10 @@ export default function JOLCOv3() {
   // Formula: PO(N) = max(0, VP − VP/amortYrs × N) + poPremium
   const [poFirstYear, setPoFirstYear] = useState(5);
   const [poLastYear, setPoLastYear] = useState(10);
-  const [lockInPeriod, setLockInPeriod] = useState(4); // BBC cannot exercise PO before this many years
-  const [poPremium, setPoPremium] = useState(0);       // Flat $M margin added above financing balance
-  const effectivePOFirstYear = Math.max(poFirstYear, lockInPeriod + 1);
+  const [poPremium, setPoPremium] = useState(0);  // Flat $M margin added above financing balance
+  // Lock-in period is simply the number of years before the first exercise year — not a separate state
+  const lockInPeriod = poFirstYear - 1;
+  const effectivePOFirstYear = poFirstYear;
   const effectiveDecline = vesselPrice / amortYrs;
 
   // Auto-generate schedule but allow per-year overrides
@@ -457,8 +458,7 @@ export default function JOLCOv3() {
                 setLeaseTerm(v);
                 setPoLastYear(v);
                 setExerciseYear(v);
-                if (poFirstYear > v) setPoFirstYear(Math.max(lockInPeriod + 1, v - 1));
-                if (lockInPeriod >= v) setLockInPeriod(Math.max(0, v - 1));
+                if (poFirstYear > v) setPoFirstYear(Math.max(1, v - 1));
               }} unit="yrs" help="BBC duration — how long charterer pays hire. Often shorter than amort period. Last PO / obligation syncs to this." min={1} max={25} />
               <div style={{ padding: "6px 8px", borderRadius: 4, background: "#1e2030", marginBottom: 8, fontSize: 10, color: "#a9b1d6", lineHeight: 1.5 }}>
                 {amortYrs !== leaseTerm && (
@@ -509,21 +509,17 @@ export default function JOLCOv3() {
 
             <div style={C}>
               {H("#bb9af7", "Purchase Options & Tax")}
-              {/* Lock-in period */}
-              <Inp label="Lock-In Period" value={lockInPeriod} onChange={(v) => {
-                const n = Math.max(0, v);
-                setLockInPeriod(n);
-                if (poFirstYear <= n) setPoFirstYear(n + 1);
-                if (exerciseYear <= n) setExerciseYear(n + 1);
-              }} unit="yrs" min={0} max={poLastYear - 1} help={`BBC cannot exercise PO before Year ${lockInPeriod + 1}. First permitted: Yr ${lockInPeriod + 1}.`} />
               {/* PO range */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 6 }}>
                 <Inp label="First PO Year" value={poFirstYear} onChange={(v) => {
-                  const n = Math.max(v, lockInPeriod + 1);
-                  setPoFirstYear(n);
-                  if (exerciseYear < n) setExerciseYear(n);
-                }} unit="" min={lockInPeriod + 1} max={poLastYear} />
-                <Inp label="Last Year (Oblig.)" value={poLastYear} onChange={(v) => { setPoLastYear(v); if (exerciseYear > v) setExerciseYear(v); }} unit="" min={effectivePOFirstYear} max={25} />
+                  setPoFirstYear(v);
+                  if (exerciseYear < v) setExerciseYear(v);
+                }} unit="" min={1} max={poLastYear} />
+                <Inp label="Last Year (Oblig.)" value={poLastYear} onChange={(v) => { setPoLastYear(v); if (exerciseYear > v) setExerciseYear(v); }} unit="" min={poFirstYear} max={25} />
+              </div>
+              {/* Lock-in period — derived, not a separate input */}
+              <div style={{ padding: "5px 8px", borderRadius: 4, background: "rgba(187,154,247,0.08)", border: "1px solid #bb9af744", fontSize: 10, color: "#bb9af7", lineHeight: 1.5, marginBottom: 10 }}>
+                Lock-in period: <strong>{lockInPeriod} yr{lockInPeriod !== 1 ? "s" : ""}</strong> (= First PO Year − 1). BBC cannot exercise before Yr {poFirstYear}.
               </div>
               {/* Exercise Year Selector */}
               <div style={{ marginBottom: 10 }}>
