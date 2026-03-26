@@ -172,9 +172,9 @@ export default function JOLCOv3() {
   const [bbcCommission, setBbcCommission] = useState(1.25);
   // Purchase Option schedule
   // Formula: PO(N) = max(0, VP − VP/amortYrs × N) + poPremium
-  const [poFirstYear, setPoFirstYear] = useState(2); // lock-in = poFirstYear-1; default 1yr lock-in
+  const [poFirstYear, setPoFirstYear] = useState(5); // lock-in = poFirstYear-1; default 4yr lock-in
   const [poLastYear, setPoLastYear] = useState(10);
-  const [poPremium, setPoPremium] = useState(0);  // Flat $M margin added above financing balance
+  const [poPremium, setPoPremium] = useState(0.5);  // Flat $M margin added above financing balance
   // Lock-in period is simply the number of years before the first exercise year — not a separate state
   const lockInPeriod = poFirstYear - 1;
   const effectivePOFirstYear = poFirstYear;
@@ -230,30 +230,32 @@ export default function JOLCOv3() {
     const depr = computeDepr(VP, usefulLife, specialDeprPct);
 
     /*
-      CORRECT MODEL — trace every dollar
-      ────────────────────────────────────
-      Outstanding balance starts at VP ($29.4M), declines by annualPrincipal each year.
-      
+      LEVERAGE MODEL — how money flows through the SPC
+      --------------------------------------------------
+      Charter hire is priced on equityAllInRate x TOTAL outstanding balance (debt + equity).
+      This is the gross asset return — the rate the charterer pays on the full vessel value.
+
       CASH IN to SPC each year:
-        Fixed hire = annualPrincipal ($1.96M) — repays total capital
-        Variable hire = allInRate × outstanding balance — covers interest on everything
-      
+        Fixed hire  = annualPrincipal (repays total capital pro-rata)
+        Variable hire = equityAllInRate x outstanding total balance
+
       CASH OUT from SPC each year:
-        To bank: debt principal portion + interest on debt
-        Bank principal repay = annualPrincipal × (debt / VP) = annualPrincipal × debtPct
-          (bank's share of the amortization, proportional to its funding share)
-        Bank interest = allInRate × outstanding debt
-      
-      NET TO EQUITY each year:
-        = (Fixed hire − bank principal) + (Variable hire − bank interest)
-        = equity share of principal + interest on equity portion of outstanding balance
-        = annualPrincipal × equityPct + allInRate × outstanding equity balance
-      
-      The equity share of principal is just return OF capital.
-      The interest on equity's balance is return ON capital — this is Stream 1.
-      
-      Stream 2 (Tax Shield) is separate — it's tax saved on the investor's OTHER income.
-      Stream 3 (Residual) is the PO exercise proceeds minus remaining debt.
+        Bank principal = annualPrincipal x debtPct/100
+        Bank interest  = bankAllInRate x outstanding debt   <-- REAL JPY funding cost
+        BBC commission = totalHire x bbcCommission%
+
+      NET TO EQUITY each year (hireSpread):
+        = netHire - bankPrincipal - bankInterest
+        where netHire = totalHire - bbcCommCost
+
+      LEVERAGE EFFECT:
+        If bankAllInRate < equityAllInRate: bank funding is cheap -> equity earns MORE
+        If bankAllInRate > equityAllInRate: bank funding is expensive -> equity earns LESS
+        Changing JPY base rate directly moves bankAllInRate and impacts equity IRR.
+
+      Stream 1 (Hire Spread) = hireSpread each year = net hire after debt service & BBC.
+      Stream 2 (Tax Shield)  = tax saved on investor's other income from SPC losses.
+      Stream 3 (Residual)    = PO exercise proceeds minus remaining debt.
     */
 
     const saleCommCost = VP * saleCommission / 100;
@@ -400,7 +402,7 @@ export default function JOLCOv3() {
             <div style={{ gridColumn: "1 / -1", ...C, background: "linear-gradient(135deg, #1a1b26, #1e2030)" }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 14 }}>
                 <div style={{ padding: 12, borderRadius: 8, background: "#16161e", border: "1px solid #292e42", textAlign: "center" }}>
-                  <div style={{ fontSize: 10, color: "#a9b1d6", textTransform: "uppercase", letterSpacing: "0.06em" }}>① Charter Hire (net BBC comm)</div>
+                  <div style={{ fontSize: 10, color: "#a9b1d6", textTransform: "uppercase", letterSpacing: "0.06em" }}>① Hire Spread (net debt service &amp; BBC)</div>
                   <div style={{ fontSize: 23, fontWeight: 700, color: "#9ece6a", fontFamily: F }}>${$d((R.totalStream1) / 1e6, 2)}M</div>
                   <div style={{ fontSize: 10, color: "#a9b1d6" }}>Hire spread after debt service &amp; {bbcCommission}% BBC brokerage</div>
                   <div style={{ marginTop: 5, fontSize: 9, fontWeight: 700, color: "#9ece6a44", background: "rgba(158,206,106,0.08)", padding: "2px 6px", borderRadius: 3, display: "inline-block", letterSpacing: "0.04em" }}>CASH YIELD · pre-tax · from charter hire</div>
@@ -798,7 +800,7 @@ export default function JOLCOv3() {
             <div style={C}>
             {H("#9ece6a", "Three Return Streams — Year by Year")}
             <div style={{ display: "flex", gap: 12, marginBottom: 12, fontSize: 11, flexWrap: "wrap" }}>
-              <span style={{ color: "#9ece6a" }}>● ① Hire Spread (net of BBC comm)</span>
+              <span style={{ color: "#9ece6a" }}>● ① Hire Spread (net debt service &amp; BBC)</span>
               <span style={{ color: "#bb9af7" }}>● ② Tax Shield</span>
               <span style={{ color: "#e0af68" }}>● ③ Residual/PO</span>
             </div>
@@ -1007,7 +1009,7 @@ export default function JOLCOv3() {
                 <div style={{ fontSize: 11, color: "#a9b1d6", marginBottom: 12 }}>Equity IRR (all 3 streams combined)</div>
                 {[
                   { l: `Equity Deployed (${100-debtPct}%+comm)`, v: `$${$d(R.totalEquityDeployed / 1e6, 2)}M`, c: "#7aa2f7" },
-                  { l: "① Hire Spread (net BBC comm)", v: `$${$d((R.totalStream1) / 1e6, 2)}M`, c: "#9ece6a" },
+                  { l: "① Hire Spread (net debt service & BBC)", v: `$${$d((R.totalStream1) / 1e6, 2)}M`, c: "#9ece6a" },
                   { l: "② Tax Shield (Net)", v: `$${$d(R.totalStream2 / 1e6, 2)}M`, c: "#bb9af7" },
                   { l: "③ Residual / PO", v: `$${$d(R.totalStream3 / 1e6, 2)}M`, c: "#e0af68" },
                   { l: "Total Profit", v: `$${$d(R.jolcoProfit / 1e6, 2)}M`, c: R.jolcoProfit >= 0 ? "#9ece6a" : "#f7768e" },
