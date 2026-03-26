@@ -471,7 +471,8 @@ export default function JOLCOv3() {
                 setLeaseTerm(v);
                 setPoLastYear(v);
                 setExerciseYear(v);
-                if (poFirstYear > v) setPoFirstYear(Math.max(1, v - 1));
+                if (poFirstYear > v) setPoFirstYear(Math.max(lockInPeriod + 1, v - 1));
+                if (lockInPeriod >= v) setLockInPeriod(Math.max(0, v - 1));
               }} unit="yrs" help="BBC duration — how long charterer pays hire. Often shorter than amort period. Last PO / obligation syncs to this." min={1} max={25} />
               <div style={{ padding: "6px 8px", borderRadius: 4, background: "#1e2030", marginBottom: 8, fontSize: 10, color: "#a9b1d6", lineHeight: 1.5 }}>
                 {amortYrs !== leaseTerm && (
