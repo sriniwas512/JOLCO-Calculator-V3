@@ -200,8 +200,10 @@ export default function JOLCOv3() {
   const effectiveExerciseYear = Math.max(effectivePOFirstYear, Math.min(poLastYear, exerciseYear));
   // Tax
   const [taxRate, setTaxRate] = useState(30.62);
-  // Cap-gains tax on PO exercise: JP individual rate = 20.315% (15.315% national + 5% local)
-  const [capGainsTaxRate, setCapGainsTaxRate] = useState(20.315);
+  // Tax on PO disposal gain: Japan has NO separate capital gains regime for TK distributions.
+  // Per NTA Circular 36・37共-21, TK proceeds are ordinary income (corporations ~30.62%) or
+  // miscellaneous income 雑所得 (individuals, progressive up to 55%). Non-residents: 20.42% WHT.
+  const [capGainsTaxRate, setCapGainsTaxRate] = useState(30.62);
   const [foreignInterestTaxPct, setForeignInterestTaxPct] = useState(27); // JP SME corporate rate on foreign interest — US levies 0% (Portfolio Interest Exemption IRC §871h); Japan taxes at full corp rate (~27% SME, 30.62% large corp)
   const [specialDeprPct, setSpecialDeprPct] = useState(30);
   const [treasuryYield, setTreasuryYield] = useState(4.25);
@@ -589,10 +591,10 @@ export default function JOLCOv3() {
                 )}
               </div>
               {/* PO Premium */}
-              <Inp label="PO Premium" value={poPremium} onChange={setPoPremium} unit="$M" step={0.1} help={`Flat margin added above financing balance at every year. PO(N) = max(0, VP - VP/${amortYrs} x N) + premium. Net benefit after ${capGainsTaxRate}% cap-gains tax ≈ premium x ${$d(1 - capGainsTaxRate/100, 4)}.`} />
+              <Inp label="PO Premium" value={poPremium} onChange={setPoPremium} unit="$M" step={0.1} help={`Flat margin added above financing balance at every year. PO(N) = max(0, VP - VP/${amortYrs} x N) + premium. Net benefit after ${capGainsTaxRate}% disposal gain tax ≈ premium x ${$d(1 - capGainsTaxRate/100, 4)}.`} />
               {/* PO decline info */}
               <div style={{ padding: 8, borderRadius: 5, background: "#1e2030", marginBottom: 10, fontSize: 10, color: "#a9b1d6", lineHeight: 1.5 }}>
-                <strong style={{ color: "#bb9af7" }}>PO(N)</strong> = max(0, {$d(vesselPrice,1)} − {$d(effectiveDecline,3)}×N){poPremium !== 0 ? ` + ${$d(poPremium,2)}` : ""}. Cap-gain tax = max(0, PO−BV) × {$d(capGainsTaxRate,3)}%. Override any row below.
+                <strong style={{ color: "#bb9af7" }}>PO(N)</strong> = max(0, {$d(vesselPrice,1)} − {$d(effectiveDecline,3)}×N){poPremium !== 0 ? ` + ${$d(poPremium,2)}` : ""}. Disposal gain tax = max(0, PO−BV) × {$d(capGainsTaxRate,3)}%. Override any row below.
               </div>
               {/* Locked years */}
               {lockInPeriod > 0 && Array.from({ length: lockInPeriod }, (_, i) => i + 1).map(yr => (
@@ -627,7 +629,7 @@ export default function JOLCOv3() {
               ))}
               <div style={{ marginTop: 10, borderTop: "1px solid #292e42", paddingTop: 10 }}>
                 <Inp label="Ordinary Income Tax Rate" value={taxRate} onChange={setTaxRate} unit="%" help={`${taxRate}% · std JP corp (23.2%) + local + defense surtax. Stream 2 (tax shield).`} step={0.01} />
-                <Inp label="Cap-Gains Tax Rate (PO)" value={capGainsTaxRate} onChange={setCapGainsTaxRate} unit="%" help="Stream 3 cap-gain on PO exercise. Default 20.315% = JP individual (15.315% national incl. 2.1% surtax + 5% local). Corporate investors: 30.62%." step={0.01} />
+                <Inp label="PO Disposal Gain Tax Rate" value={capGainsTaxRate} onChange={setCapGainsTaxRate} unit="%" help="Tax on (PO price − depreciated book value) at exit. Japan has NO separate capital gains regime for TK proceeds — per NTA Circular 36・37共-21, gains are ordinary income. Corporate TK investors: 30.62% (default). Individual TK investors: progressive up to 55% (雑所得). Non-residents: 20.42% withholding." step={0.01} />
                 <Inp label="US Treasury Yield" value={treasuryYield} onChange={setTreasuryYield} unit="%" step={0.01} />
                 <Inp label="JP Tax on Foreign Interest" value={foreignInterestTaxPct} onChange={setForeignInterestTaxPct} unit="%" step={0.01} help="JP SME corp rate ~27%, large corp 30.62%. No preferential rate for corps on foreign interest. US charges 0% (Portfolio Interest Exemption, IRC §871h)." />
                 <Slider label="Special Depreciation (Yr1)" value={specialDeprPct} onChange={(v) => setSpecialDeprPct(Math.min(v, flagInfo.specialMax))} min={0} max={flagInfo.specialMax} step={1} unit="%" help={`MLIT advanced vessels: ${flagInfo.specialMin}–${flagInfo.specialMax}% for ${flagInfo.label}`} />
@@ -946,11 +948,11 @@ export default function JOLCOv3() {
                               </div>
                               <div style={{ borderTop: "1px dashed #3b4261", marginTop: 4, paddingTop: 4 }} />
                               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                <span style={{ color: "#f7768e" }}>Less: Capital Gains Tax ({capGainsTaxRate}%)</span>
+                                <span style={{ color: "#f7768e" }}>Less: Disposal Gain Tax ({capGainsTaxRate}%)</span>
                                 <span style={{ color: "#f7768e" }}>-${$(y.capGainTax)}</span>
                               </div>
                               <div style={{ paddingLeft: 12, fontSize: 11, color: "#a9b1d6" }}>
-                                Taxable gain = max(0, PO price ${$(y.poExercise)} − book value ${$(y.bookVal)}) = ${$(Math.max(0, y.poExercise - y.bookVal))} × {capGainsTaxRate}%
+                                Taxable gain = max(0, PO price ${$(y.poExercise)} − book value ${$(y.bookVal)}) = ${$(Math.max(0, y.poExercise - y.bookVal))} × {capGainsTaxRate}% (ordinary income per NTA Circular 36・37共-21)
                               </div>
                               <div style={{ paddingLeft: 12, fontSize: 11, color: "#a9b1d6" }}>
                                 Book value is low after {y.yr} yrs of accelerated depreciation — most of the gain is taxable
