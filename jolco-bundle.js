@@ -21620,8 +21620,9 @@
       const equityAllInRate = (sofrRate + spreadBps / 100) / 100;
       const poEntry = poSchedule.find((p) => p.yr === effectiveExerciseYear);
       const poPriceMil = poEntry ? poEntry.price * 1e6 : 0;
-      const depr = computeDepr(VP, usefulLife, specialDeprPct);
       const saleCommCost = VP * saleCommission / 100;
+      const depreciableBase = VP + saleCommCost;
+      const depr = computeDepr(depreciableBase, usefulLife, specialDeprPct);
       const equityCF = [-(equity + saleCommCost)];
       const equityCF_noTax = [-(equity + saleCommCost)];
       const years = [];
@@ -21631,17 +21632,17 @@
       let cumulativeEquityCF = -(equity + saleCommCost);
       let totalStream1 = 0, totalStream2 = 0, totalStream3 = 0, totalBbcComm = 0;
       for (let yr = 1; yr <= effectiveExerciseYear; yr++) {
-        const fixedHire = annualPrincipal;
+        const fixedHire = Math.min(annualPrincipal, outstandingTotal);
         const variableHire = outstandingTotal * equityAllInRate;
         const variableHireEquity = variableHire;
         const variableHireBank = 0;
         const totalHire = fixedHire + variableHire;
         const bbcCommCost = totalHire * bbcCommission / 100;
         const netHire = totalHire - bbcCommCost;
-        const bankPrincipal = annualPrincipal * (debtPct / 100);
+        const bankPrincipal = Math.min(annualPrincipal * (debtPct / 100), outstandingDebt);
         const bankInterest = outstandingDebt * bankAllInRate;
         const totalToBank = bankPrincipal + bankInterest;
-        const equityPrincipalReturn = annualPrincipal * ((100 - debtPct) / 100);
+        const equityPrincipalReturn = Math.min(annualPrincipal * ((100 - debtPct) / 100), outstandingEquity);
         const netHireToEquity = netHire - bankPrincipal - bankInterest;
         const hireSpread = netHireToEquity - equityPrincipalReturn;
         const equityInterestIncome = hireSpread;

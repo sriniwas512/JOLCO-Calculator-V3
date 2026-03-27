@@ -227,7 +227,11 @@ export default function JOLCOv3() {
 
     const poEntry = poSchedule.find(p => p.yr === effectiveExerciseYear);
     const poPriceMil = poEntry ? poEntry.price * 1e6 : 0;
-    const depr = computeDepr(VP, usefulLife, specialDeprPct);
+    // Sale commission is capitalized into the depreciable asset base (Japanese tax law: acquisition
+    // costs including purchase commission are added to the asset cost and depreciated together)
+    const saleCommCost = VP * saleCommission / 100;
+    const depreciableBase = VP + saleCommCost;
+    const depr = computeDepr(depreciableBase, usefulLife, specialDeprPct);
 
     /*
       LEVERAGE MODEL — how money flows through the SPC
@@ -258,7 +262,6 @@ export default function JOLCOv3() {
       Stream 3 (Residual)    = PO exercise proceeds minus remaining debt.
     */
 
-    const saleCommCost = VP * saleCommission / 100;
     const equityCF = [-(equity + saleCommCost)];
     const equityCF_noTax = [-(equity + saleCommCost)];
     const years = [];
@@ -275,7 +278,8 @@ export default function JOLCOv3() {
       // separate SPC expense. This creates genuine leverage sensitivity:
       //   bankAllInRate < equityAllInRate → positive leverage → equity earns MORE than equityAllInRate
       //   bankAllInRate > equityAllInRate → negative leverage → equity earns LESS than equityAllInRate
-      const fixedHire = annualPrincipal;
+      // FIX: clamp fixedHire to actual outstanding so ghost payments stop once fully amortized
+      const fixedHire = Math.min(annualPrincipal, outstandingTotal);
       const variableHire = outstandingTotal * equityAllInRate;  // asset return on full capital base
       const variableHireEquity = variableHire;                  // for display compat
       const variableHireBank   = 0;                             // bank interest is a cost, not in hire
@@ -284,12 +288,13 @@ export default function JOLCOv3() {
       const netHire = totalHire - bbcCommCost;
 
       // ── CASH OUT TO BANK ──
-      const bankPrincipal = annualPrincipal * (debtPct / 100);
+      // FIX: clamp bank principal to actual remaining debt so it zeros out once fully repaid
+      const bankPrincipal = Math.min(annualPrincipal * (debtPct / 100), outstandingDebt);
       const bankInterest = outstandingDebt * bankAllInRate;   // JPY funding cost — real SPC expense
       const totalToBank = bankPrincipal + bankInterest;
 
       // ── NET TO EQUITY (residual after bank principal + interest) ──
-      const equityPrincipalReturn = annualPrincipal * ((100 - debtPct) / 100);
+      const equityPrincipalReturn = Math.min(annualPrincipal * ((100 - debtPct) / 100), outstandingEquity);
       const netHireToEquity = netHire - bankPrincipal - bankInterest;
       // Stream 1 = interest-like income to equity (return ON capital, after bank costs)
       const hireSpread = netHireToEquity - equityPrincipalReturn;
@@ -312,7 +317,7 @@ export default function JOLCOv3() {
         const remainDebt = outstandingDebt - bankPrincipal;
         // PO proceeds: first pay off remaining debt, rest to equity
         const grossResidual = poPriceMil - remainDebt;
-        // Cap gains tax on (PO price - book value)
+        // Cap gains tax on (PO price - book value). Book value reflects full depreciable base incl. commission.
         const bookVal = dep.bv;
         const capGain = Math.max(0, poPriceMil - bookVal);
         capGainTax = capGain * capGainsTaxRate / 100;
