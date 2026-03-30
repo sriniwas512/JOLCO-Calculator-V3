@@ -795,7 +795,7 @@ export default function JOLCOv3() {
                           <span style={{ color: "#6b7299" }}> · </span>
                           <span style={{ color: "#e0af68", fontWeight: 700 }}>{pct(R.blendedIRR)} blended IRR</span>
                           <span style={{ color: "#6b7299" }}> · </span>
-                          <span style={{ color: "#bb9af7", fontWeight: 700 }}>{pct(R.equityIRR)} pre-tax IRR</span>
+                          <span style={{ color: "#bb9af7", fontWeight: 700 }}>{pct(R.equityIRR)} equity IRR</span>
                         </div>
                       </div>
                     </div>
