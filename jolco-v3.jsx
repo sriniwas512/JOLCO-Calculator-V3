@@ -838,7 +838,7 @@ export default function JOLCOv3() {
                       </td>
                       <td onClick={() => setExpandedYear(isExpanded ? null : y.yr)}
                         style={{ padding: "5px 8px", textAlign: "right", fontFamily: F, color: "#9ece6a", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>
-                        ${$(y.hireSpread - y.bbcCommCost)} <span style={{ fontSize: 9, color: "#a9b1d6" }}>{isExpanded ? "▲" : "▼"}</span>
+                        {y.hireSpread >= 0 ? `$${$(y.hireSpread)}` : `-$${$(Math.abs(y.hireSpread))}`} <span style={{ fontSize: 9, color: "#a9b1d6" }}>{isExpanded ? "▲" : "▼"}</span>
                       </td>
                       <td onClick={() => setExpandedTaxYear(expandedTaxYear === y.yr ? null : y.yr)}
                         style={{ padding: "5px 8px", textAlign: "right", fontFamily: F, color: y.taxShieldThisYear >= 0 ? "#bb9af7" : "#f7768e", cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>
@@ -911,15 +911,15 @@ export default function JOLCOv3() {
                               </div>
                               <div style={{ borderTop: "1px solid #3b4261", marginTop: 6, paddingTop: 6, display: "flex", justifyContent: "space-between" }}>
                                 <span style={{ color: y.taxShieldThisYear >= 0 ? "#bb9af7" : "#f7768e", fontWeight: 700, fontSize: 13 }}>
-                                  {y.taxShieldThisYear >= 0 ? "Tax Shield (saving)" : "Tax Liability (extra tax owed)"}
+                                  {y.taxShieldThisYear >= 0 ? "Tax Shield (Stream ②)" : "Tax Liability (Stream ②)"}
                                 </span>
                                 <span style={{ color: y.taxShieldThisYear >= 0 ? "#bb9af7" : "#f7768e", fontWeight: 700, fontSize: 13 }}>
                                   {y.taxShieldThisYear >= 0 ? `+$${$(y.taxShieldThisYear)}` : `-$${$(Math.abs(y.taxShieldThisYear))}`}
                                 </span>
                               </div>
                               <div style={{ paddingLeft: 12, fontSize: 11, color: "#a9b1d6" }}>
-                                = −(SPC P&L) × {taxRate.toFixed(2)}% = −({y.spcTaxablePL >= 0 ? "+" : "−"}${$(Math.abs(y.spcTaxablePL))}) × {taxRate.toFixed(2)}%
-                                {y.taxShieldThisYear < 0 && <span style={{ color: "#f7768e" }}> ⚠ Positive SPC profit → TK investors pay additional tax this year</span>}
+                                = −({y.spcTaxablePL >= 0 ? "+" : "−"}${$(Math.abs(y.spcTaxablePL))}) × {taxRate.toFixed(2)}%
+                                {y.taxShieldThisYear < 0 && <span style={{ color: "#f7768e" }}> ⚠ Positive SPC profit → TK investors owe extra tax this year</span>}
                               </div>
                             </div>
                           </div>
@@ -966,11 +966,11 @@ export default function JOLCOv3() {
                                 Book value is low after {y.yr} yrs of accelerated depreciation — most of the gain is taxable
                               </div>
                               <div style={{ borderTop: "1px solid #3b4261", marginTop: 6, paddingTop: 6, display: "flex", justifyContent: "space-between" }}>
-                                <span style={{ color: "#e0af68", fontWeight: 700, fontSize: 13 }}>Net Residual to Equity (Stream 3)</span>
+                                <span style={{ color: "#e0af68", fontWeight: 700, fontSize: 13 }}>Net Residual to Equity (Stream ③)</span>
                                 <span style={{ color: "#e0af68", fontWeight: 700, fontSize: 13 }}>+${$(y.residualGain)}</span>
                               </div>
                               <div style={{ paddingLeft: 12, fontSize: 11, color: "#a9b1d6" }}>
-                                = Gross proceeds ${$(y.poExercise - y.outstandingDebt)} − cap gains tax ${$(y.capGainTax)}
+                                = Gross proceeds ${$(y.poExercise - y.outstandingDebt)} − disposal gain tax ${$(y.capGainTax)}
                               </div>
                             </div>
                           </div>
@@ -981,47 +981,43 @@ export default function JOLCOv3() {
                       <tr style={{ borderBottom: "1px solid #1e2030" }}>
                         <td colSpan={6} style={{ padding: 0 }}>
                           <div style={{ margin: "0 8px 8px", padding: 12, borderRadius: 6, background: "#16161e", border: "1px solid #3b4261" }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#c0caf5", marginBottom: 8, fontFamily: F }}>Year {y.yr} — Full Hire Breakdown</div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#c0caf5", marginBottom: 8, fontFamily: F }}>Year {y.yr} — Hire Spread (Stream ①)</div>
                             <div style={{ fontFamily: F, fontSize: 12, lineHeight: 2, color: "#a9b1d6" }}>
                               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                <span>Gross BB Charter Hire</span>
+                                <span>Gross Charter Hire</span>
                                 <span style={{ color: "#c0caf5", fontWeight: 700 }}>${$(y.totalHire)}</span>
                               </div>
                               <div style={{ paddingLeft: 12, fontSize: 11, color: "#a9b1d6" }}>
-                                Fixed (amortization): ${$(y.fixedHire)}/yr · Variable ({((R.equityAllInRate)*100).toFixed(2)}% × ${$(y.outstandingEquity + y.equityPrincipalReturn + y.outstandingDebt + y.bankPrincipal)} total outstanding): ${$(y.variableHireEquity)}
+                                Fixed ${$(y.fixedHire)} + Variable ({((R.equityAllInRate)*100).toFixed(2)}% × ${$(y.outstandingEquity + y.equityPrincipalReturn + y.outstandingDebt + y.bankPrincipal)} total outstanding) = ${$(y.variableHireEquity)}
                               </div>
                               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                <span style={{ color: "#f7768e" }}>BBC Commission ({bbcCommission}%)</span>
+                                <span style={{ color: "#f7768e" }}>Less: BBC Commission ({bbcCommission}%)</span>
                                 <span style={{ color: "#f7768e" }}>-${$(y.bbcCommCost)}</span>
                               </div>
-                              <div style={{ paddingLeft: 12, fontSize: 11, color: "#a9b1d6" }}>
-                                Brokerage on gross hire · Net hire: ${$(y.netHire)} · tax offset: +${$(y.bbcCommCost * taxRate / 100)} (deductible SPC expense)
-                              </div>
-                              <div style={{ borderTop: "1px dashed #3b4261", marginTop: 4, paddingTop: 4 }} />
                               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                <span style={{ color: "#f7768e" }}>Bank Debt Service ({debtPct}% — JPY funding cost)</span>
-                                <span style={{ color: "#f7768e" }}>-${$(y.totalToBank)}</span>
+                                <span style={{ color: "#f7768e" }}>Less: Bank Principal ({debtPct}% of amortization)</span>
+                                <span style={{ color: "#f7768e" }}>-${$(y.bankPrincipal)}</span>
                               </div>
-                              <div style={{ paddingLeft: 12, fontSize: 11, color: "#a9b1d6" }}>
-                                Principal: ${$(y.bankPrincipal)} · Interest: ${$(y.bankInterest)} ({((R.bankAllInRate)*100).toFixed(2)}% on ${$(y.outstandingDebt + y.bankPrincipal)} JPY debt)
+                              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                <span style={{ color: "#f7768e" }}>Less: Bank Interest ({((R.bankAllInRate)*100).toFixed(2)}% × ${$(y.outstandingDebt + y.bankPrincipal)} debt)</span>
+                                <span style={{ color: "#f7768e" }}>-${$(y.bankInterest)}</span>
                               </div>
                               <div style={{ paddingLeft: 12, fontSize: 10, color: "#7aa2f7" }}>
-                                ↑ This is the JPY rate sensitivity — higher bank rate reduces what flows to equity
+                                ↑ JPY rate sensitivity — higher TIBOR raises this cost and compresses the spread
                               </div>
-                              <div style={{ borderTop: "1px dashed #3b4261", marginTop: 4, paddingTop: 4 }} />
                               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                <span style={{ color: "#9ece6a", fontWeight: 700 }}>Net to Equity ({100 - debtPct}%)</span>
-                                <span style={{ color: "#9ece6a", fontWeight: 700 }}>${$(y.equityPrincipalReturn + y.hireSpread)}</span>
+                                <span style={{ color: "#f7768e" }}>Less: Equity Principal Return ({100-debtPct}% of amortization)</span>
+                                <span style={{ color: "#f7768e" }}>-${$(y.equityPrincipalReturn)}</span>
                               </div>
-                              <div style={{ paddingLeft: 12, marginTop: 2 }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                                  <span style={{ color: "#7aa2f7" }}>Principal return (return OF capital)</span>
-                                  <span style={{ color: "#7aa2f7" }}>${$(y.equityPrincipalReturn)}</span>
-                                </div>
-                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                                  <span style={{ color: y.hireSpread >= 0 ? "#9ece6a" : "#f7768e" }}>Hire spread (return ON capital, Stream 1)</span>
-                                  <span style={{ color: y.hireSpread >= 0 ? "#9ece6a" : "#f7768e" }}>{y.hireSpread >= 0 ? `$${$(y.hireSpread)}` : `-$${$(Math.abs(y.hireSpread))}`}</span>
-                                </div>
+                              <div style={{ paddingLeft: 12, fontSize: 11, color: "#a9b1d6" }}>
+                                Return OF capital — shown separately in Total CF
+                              </div>
+                              <div style={{ borderTop: "1px solid #3b4261", marginTop: 6, paddingTop: 6, display: "flex", justifyContent: "space-between" }}>
+                                <span style={{ color: y.hireSpread >= 0 ? "#9ece6a" : "#f7768e", fontWeight: 700, fontSize: 13 }}>Hire Spread (Stream ①)</span>
+                                <span style={{ color: y.hireSpread >= 0 ? "#9ece6a" : "#f7768e", fontWeight: 700, fontSize: 13 }}>{y.hireSpread >= 0 ? `+$${$(y.hireSpread)}` : `-$${$(Math.abs(y.hireSpread))}`}</span>
+                              </div>
+                              <div style={{ paddingLeft: 12, fontSize: 11, color: "#a9b1d6" }}>
+                                = Gross hire ${$(y.totalHire)} − BBC ${$(y.bbcCommCost)} − bank principal ${$(y.bankPrincipal)} − bank interest ${$(y.bankInterest)} − equity principal ${$(y.equityPrincipalReturn)}
                               </div>
                             </div>
                           </div>
@@ -1067,8 +1063,11 @@ export default function JOLCOv3() {
                                 </>
                               )}
                               <div style={{ borderTop: "1px solid #3b4261", marginTop: 6, paddingTop: 6, display: "flex", justifyContent: "space-between" }}>
-                                <span style={{ color: y.netCF >= 0 ? "#9ece6a" : "#f7768e", fontWeight: 700, fontSize: 13 }}>Total Equity Cash Flow</span>
+                                <span style={{ color: y.netCF >= 0 ? "#9ece6a" : "#f7768e", fontWeight: 700, fontSize: 13 }}>Total CF Year {y.yr}</span>
                                 <span style={{ color: y.netCF >= 0 ? "#9ece6a" : "#f7768e", fontWeight: 700, fontSize: 13 }}>{y.netCF >= 0 ? `+$${$(y.netCF)}` : `-$${$(Math.abs(y.netCF))}`}</span>
+                              </div>
+                              <div style={{ paddingLeft: 12, fontSize: 11, color: "#a9b1d6" }}>
+                                = ${$(y.equityPrincipalReturn)} principal + {y.hireSpread >= 0 ? "+" : "−"}${$(Math.abs(y.hireSpread))} hire spread {y.taxShieldThisYear >= 0 ? "+" : "−"}${$(Math.abs(y.taxShieldThisYear))} tax {y.residualGain !== 0 ? `+ $${$(y.residualGain)} residual` : ""}
                               </div>
                             </div>
                           </div>
@@ -1089,15 +1088,12 @@ export default function JOLCOv3() {
                                 <span>+ Cash flows Years 1 to {y.yr}</span>
                                 <span style={{ color: "#9ece6a" }}>+${$(y.cumulativeEquityCF + R.totalEquityDeployed)}</span>
                               </div>
-                              <div style={{ borderTop: "1px dashed #3b4261", marginTop: 4, paddingTop: 4 }} />
-                              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                <span style={{ fontWeight: 700 }}>Running total</span>
-                                <span style={{ color: y.cumulativeEquityCF >= 0 ? "#9ece6a" : "#f7768e", fontWeight: 700 }}>{y.cumulativeEquityCF >= 0 ? `+$${$(y.cumulativeEquityCF)}` : `-$${$(Math.abs(y.cumulativeEquityCF))}`}</span>
+                              <div style={{ borderTop: "1px solid #3b4261", marginTop: 6, paddingTop: 6, display: "flex", justifyContent: "space-between" }}>
+                                <span style={{ color: y.cumulativeEquityCF >= 0 ? "#9ece6a" : "#f7768e", fontWeight: 700, fontSize: 13 }}>Cumulative CF (Year {y.yr})</span>
+                                <span style={{ color: y.cumulativeEquityCF >= 0 ? "#9ece6a" : "#f7768e", fontWeight: 700, fontSize: 13 }}>{y.cumulativeEquityCF >= 0 ? `+$${$(y.cumulativeEquityCF)}` : `-$${$(Math.abs(y.cumulativeEquityCF))}`}</span>
                               </div>
                               <div style={{ paddingLeft: 12, fontSize: 11, color: "#a9b1d6" }}>
-                                {y.cumulativeEquityCF < 0
-                                  ? `Still $${$(Math.abs(y.cumulativeEquityCF))} in the hole — equity not yet recovered`
-                                  : `Equity fully recovered + $${$(y.cumulativeEquityCF)} surplus`}
+                                = Year 0 outflow −${$(R.totalEquityDeployed)} + cumulative inflows +${$(y.cumulativeEquityCF + R.totalEquityDeployed)} → {y.cumulativeEquityCF < 0 ? `$${$(Math.abs(y.cumulativeEquityCF))} equity still to recover` : `equity fully recovered + $${$(y.cumulativeEquityCF)} surplus`}
                               </div>
                             </div>
                           </div>
