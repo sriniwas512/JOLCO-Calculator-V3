@@ -21858,7 +21858,8 @@
         Row,
         {
           val: s2,
-          color: "#bb9af7",
+          neg: s2 < 0,
+          color: s2 >= 0 ? "#bb9af7" : "#f7768e",
           label: "\u2461 Tax Shield \u2014 Depreciation Loss via TK Pass-Through",
           explain: `The SPC claims Japanese tax depreciation (200% declining balance \u2192 straight-line switch, per MOF Ordinance \u5225\u8868\u7B2C\u4E00) on the full vessel cost. In early years, depreciation exceeds hire income net of bank interest \u2192 SPC records an accounting loss. This loss flows through the TK structure (\u533F\u540D\u7D44\u5408) to each investor's own corporate tax return, directly offsetting their operating profits. Tax saved = loss \xD7 ${taxRate}% corporate rate. In later years the SPC turns profitable and investors owe incremental tax \u2014 Stream \u2461 is the NET over the full term.`
         }
