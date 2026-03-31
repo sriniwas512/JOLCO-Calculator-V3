@@ -422,8 +422,8 @@ export default function JOLCOv3() {
                   <div style={{ fontSize: 23, fontWeight: 700, color: R.totalStream2 >= 0 ? "#bb9af7" : "#f7768e", fontFamily: F }}>{R.totalStream2 >= 0 ? "+" : "−"}${$d(Math.abs(R.totalStream2) / 1e6, 2)}M</div>
                   <div style={{ fontSize: 10, color: R.totalStream2 >= 0 ? "#a9b1d6" : "#f7768e" }}>
                     {R.totalStream2 >= 0
-                      ? "Net tax saving → Blended IRR > Equity IRR"
-                      : "Net tax liability → Blended IRR < Equity IRR"}
+                      ? "Positive impact on IRR"
+                      : "Negative impact on IRR"}
                   </div>
                   <div style={{ marginTop: 5, fontSize: 9, fontWeight: 700, color: "#bb9af744", background: "rgba(187,154,247,0.08)", padding: "2px 6px", borderRadius: 3, display: "inline-block", letterSpacing: "0.04em" }}>TAX ARBITRAGE · depends on investor tax capacity</div>
                 </div>
