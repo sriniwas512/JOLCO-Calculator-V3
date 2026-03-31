@@ -419,8 +419,12 @@ export default function JOLCOv3() {
                 </div>
                 <div style={{ padding: 12, borderRadius: 8, background: "#16161e", border: "1px solid #292e42", textAlign: "center" }}>
                   <div style={{ fontSize: 10, color: "#a9b1d6", textTransform: "uppercase", letterSpacing: "0.06em" }}>② Tax Shield (Net)</div>
-                  <div style={{ fontSize: 23, fontWeight: 700, color: "#bb9af7", fontFamily: F }}>${$d(R.totalStream2 / 1e6, 2)}M</div>
-                  <div style={{ fontSize: 10, color: "#a9b1d6" }}>Tax saved from depreciation losses</div>
+                  <div style={{ fontSize: 23, fontWeight: 700, color: R.totalStream2 >= 0 ? "#bb9af7" : "#f7768e", fontFamily: F }}>{R.totalStream2 >= 0 ? "+" : "−"}${$d(Math.abs(R.totalStream2) / 1e6, 2)}M</div>
+                  <div style={{ fontSize: 10, color: R.totalStream2 >= 0 ? "#a9b1d6" : "#f7768e" }}>
+                    {R.totalStream2 >= 0
+                      ? "Net tax saving → Blended IRR > Equity IRR"
+                      : "Net tax liability → Blended IRR < Equity IRR"}
+                  </div>
                   <div style={{ marginTop: 5, fontSize: 9, fontWeight: 700, color: "#bb9af744", background: "rgba(187,154,247,0.08)", padding: "2px 6px", borderRadius: 3, display: "inline-block", letterSpacing: "0.04em" }}>TAX ARBITRAGE · depends on investor tax capacity</div>
                 </div>
                 <div style={{ padding: 12, borderRadius: 8, background: "#16161e", border: "1px solid #292e42", textAlign: "center" }}>
