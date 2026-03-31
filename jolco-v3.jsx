@@ -754,8 +754,8 @@ export default function JOLCOv3() {
                 const s3 = R.totalStream3;
                 const sc = R.saleCommCost;
                 const bc = R.totalBbcComm;
-                const totalReturned = eq + R.jolcoProfit;
                 const principalBack = R.years.reduce((s, y) => s + y.equityPrincipalReturn, 0);
+                const totalReturned = principalBack + s1 + s2 + s3;
                 const profit = R.jolcoProfit;
 
                 const Row = ({ val, label, explain, color, neg = false }) => (
@@ -780,9 +780,7 @@ export default function JOLCOv3() {
                     <Row val={principalBack} color="#7aa2f7" label="Principal Returned via Fixed Hire"
                       explain={`Fixed hire = Vessel Price ÷ amortization period = $${$(R.monthlyFixed)}/mo. The equity investors' ${100-debtPct}% share of each annual fixed hire payment = $${$d(principalBack/effectiveExerciseYear/1e6,2)}M/yr. This is return OF capital — not profit. You are simply recovering what you put in.`} />
                     <Row val={s1} color="#9ece6a" label={`① Charter Hire Spread — SOFR+${spreadBps}bps on equity balance`}
-                      explain={`Variable hire is charged on the full outstanding vessel balance at the all-in rate (${(R.equityAllInRate*100).toFixed(2)}%). The bank takes its share to cover JPY loan interest (${(R.bankAllInRate*100).toFixed(2)}% on ${debtPct}% of balance). The equity investors keep the variable hire on their ${100-debtPct}% of the outstanding balance. As principal is repaid, this stream declines each year. This is the actual return ON capital.`} />
-                    <Row val={bc} neg color="#f7768e" label={`BBC Commission — ${bbcCommission}% of Gross Hire`}
-                      explain={`Annual bareboat charter brokerage paid by the SPC to the shipbroker. BIMCO standard rate for BBC arrangements. Deducted from all hire received before anything reaches equity or bank. Reduces SPC taxable income (deductible expense). Total over ${effectiveExerciseYear}yr lease: $${$d(bc/1e6,2)}M.`} />
+                      explain={`Variable hire charged on the full outstanding vessel balance at the all-in rate (${(R.equityAllInRate*100).toFixed(2)}%). Bank takes its share for JPY loan interest (${(R.bankAllInRate*100).toFixed(2)}% on ${debtPct}% of balance). Already net of BBC commission ($${$d(bc/1e6,2)}M total), bank principal and bank interest. As principal is repaid, this stream declines each year — this is the actual return ON capital.`} />
                     <Row val={s2} neg={s2 < 0} color={s2 >= 0 ? "#bb9af7" : "#f7768e"} label="② Tax Shield — Depreciation Loss via TK Pass-Through"
                       explain={`The SPC claims Japanese tax depreciation (200% declining balance → straight-line switch, per MOF Ordinance 別表第一) on the full vessel cost. In early years, depreciation exceeds hire income net of bank interest → SPC records an accounting loss. This loss flows through the TK structure (匿名組合) to each investor's own corporate tax return, directly offsetting their operating profits. Tax saved = loss × ${taxRate}% corporate rate. In later years the SPC turns profitable and investors owe incremental tax — Stream ② is the NET over the full term.`} />
                     <Row val={s3} color="#e0af68" label={`③ Residual — PO Exercise at Year ${effectiveExerciseYear}`}

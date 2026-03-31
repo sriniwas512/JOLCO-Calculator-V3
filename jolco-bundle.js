@@ -21807,8 +21807,8 @@
       const s3 = R.totalStream3;
       const sc = R.saleCommCost;
       const bc = R.totalBbcComm;
-      const totalReturned = eq + R.jolcoProfit;
       const principalBack = R.years.reduce((s, y) => s + y.equityPrincipalReturn, 0);
+      const totalReturned = principalBack + s1 + s2 + s3;
       const profit = R.jolcoProfit;
       const Row = ({ val, label, explain, color, neg = false }) => /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "grid", gridTemplateColumns: "110px 1fr", gap: "0 18px", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #1e2030" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { textAlign: "right", fontFamily: F, fontSize: 16, fontWeight: 700, color, paddingTop: 1 } }, neg ? "\u2212" : "+", "\u2009$", $d(Math.abs(val) / 1e6, 2), "M"), /* @__PURE__ */ import_react.default.createElement("div", null, /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: 12, fontWeight: 600, color: "#c0caf5", marginBottom: 2 } }, label), /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: 10, color: "#a9b1d6", lineHeight: 1.55 } }, explain)));
       return /* @__PURE__ */ import_react.default.createElement("div", null, /* @__PURE__ */ import_react.default.createElement(
@@ -21843,16 +21843,7 @@
           val: s1,
           color: "#9ece6a",
           label: `\u2460 Charter Hire Spread \u2014 SOFR+${spreadBps}bps on equity balance`,
-          explain: `Variable hire is charged on the full outstanding vessel balance at the all-in rate (${(R.equityAllInRate * 100).toFixed(2)}%). The bank takes its share to cover JPY loan interest (${(R.bankAllInRate * 100).toFixed(2)}% on ${debtPct}% of balance). The equity investors keep the variable hire on their ${100 - debtPct}% of the outstanding balance. As principal is repaid, this stream declines each year. This is the actual return ON capital.`
-        }
-      ), /* @__PURE__ */ import_react.default.createElement(
-        Row,
-        {
-          val: bc,
-          neg: true,
-          color: "#f7768e",
-          label: `BBC Commission \u2014 ${bbcCommission}% of Gross Hire`,
-          explain: `Annual bareboat charter brokerage paid by the SPC to the shipbroker. BIMCO standard rate for BBC arrangements. Deducted from all hire received before anything reaches equity or bank. Reduces SPC taxable income (deductible expense). Total over ${effectiveExerciseYear}yr lease: $${$d(bc / 1e6, 2)}M.`
+          explain: `Variable hire charged on the full outstanding vessel balance at the all-in rate (${(R.equityAllInRate * 100).toFixed(2)}%). Bank takes its share for JPY loan interest (${(R.bankAllInRate * 100).toFixed(2)}% on ${debtPct}% of balance). Already net of BBC commission ($${$d(bc / 1e6, 2)}M total), bank principal and bank interest. As principal is repaid, this stream declines each year \u2014 this is the actual return ON capital.`
         }
       ), /* @__PURE__ */ import_react.default.createElement(
         Row,
